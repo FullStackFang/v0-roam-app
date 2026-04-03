@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roam — NYC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.1.3/maplibre-gl.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.1.3/maplibre-gl.min.js"></script>
+<style>
+:root {
+  --bg: #f0f2f5;
+  --surface: rgba(255,255,255,0.98);
+  --border: rgba(0,0,0,0.07);
+  --text: #16181f;
+  --muted: rgba(22,24,31,0.45);
+  --accent: #FF5C3A;
+  --warm: #F09040;
+  --cool: #4DAAAC;
+  --green: #3BAA82;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); font-family:'DM Sans',sans-serif; color:var(--text); }
+
+#map { position:absolute; inset:0; width:100%; height:100%; background:#f0f2f5; }
+
+/* ── CUSTOM MARKER ─────────────────────────────────── */
+/* Wrapper is 0×0 — the dot and rings all radiate from the exact lat/lng point */
+.roam-marker {
+  position:relative;
+  width:0; height:0;
+  cursor:pointer;
+  overflow:visible;
+}
+.roam-marker .ring {
+  position:absolute;
+  border-radius:50%;
+  border-style:solid;
+  opacity:0;
+  top:0; left:0;
+}
+.roam-marker .dot {
+  position:absolute;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,0.95);
+  z-index:2;
+  transition: transform 0.15s;
+}
+.roam-marker:hover .dot { transform:scale(1.3) !important; }
+
+/* ── ACTIVITY LEVEL 3 — buzzing (3 rings, slow, generous spread) ── */
+.level-3 .dot   { width:13px; height:13px; top:-6.5px; left:-6.5px; box-shadow:0 0 10px currentColor; }
+.level-3 .ring  { width:13px; height:13px; top:-6.5px; left:-6.5px; border-width:1.5px; animation:radiate-3 3.6s ease-out infinite; }
+.level-3 .ring:nth-child(2) { animation-delay:1.2s; }
+.level-3 .ring:nth-child(3) { animation-delay:2.4s; }
+@keyframes radiate-3 {
+  0%   { transform:scale(0.4); opacity:0.7; }
+  100% { transform:scale(7);   opacity:0;   }
+}
+
+/* ── ACTIVITY LEVEL 2 — active (2 rings, gentle) ── */
+.level-2 .dot   { width:11px; height:11px; top:-5.5px; left:-5.5px; box-shadow:0 0 7px currentColor; }
+.level-2 .ring  { width:11px; height:11px; top:-5.5px; left:-5.5px; border-width:1.2px; animation:radiate-2 4.5s ease-out infinite; }
+.level-2 .ring:nth-child(2) { animation-delay:2.25s; }
+.level-2 .ring:nth-child(3) { display:none; }
+@keyframes radiate-2 {
+  0%   { transform:scale(0.4); opacity:0.55; }
+  100% { transform:scale(5.5); opacity:0;    }
+}
+
+/* ── ACTIVITY LEVEL 1 — quiet (1 ring, barely there) ── */
+.level-1 .dot   { width:9px; height:9px; top:-4.5px; left:-4.5px; box-shadow:0 0 4px currentColor; }
+.level-1 .ring  { width:9px; height:9px; top:-4.5px; left:-4.5px; border-width:1px; animation:radiate-1 6s ease-out infinite; }
+.level-1 .ring:nth-child(2) { display:none; }
+.level-1 .ring:nth-child(3) { display:none; }
+@keyframes radiate-1 {
+  0%   { transform:scale(0.5); opacity:0.4; }
+  100% { transform:scale(4);   opacity:0;   }
+}
+
+/* ── HEATMAP COLORS ── */
+/* Level 3: coral-red */
+.level-3.heat-a .ring { border-color:#E84428; } .level-3.heat-a .dot { background:#E84428; color:#E84428; }
+/* Level 3 variant: warm orange-red */
+.level-3.heat-b .ring { border-color:#F05030; } .level-3.heat-b .dot { background:#F05030; color:#F05030; }
+/* Level 2: amber-orange */
+.level-2.heat-c .ring { border-color:#E88030; } .level-2.heat-c .dot { background:#E88030; color:#E88030; }
+/* Level 2 variant: golden amber */
+.level-2.heat-d .ring { border-color:#D4922A; } .level-2.heat-d .dot { background:#D4922A; color:#D4922A; }
+/* Level 1: teal */
+.level-1.heat-e .ring { border-color:#4DAAAC; } .level-1.heat-e .dot { background:#4DAAAC; color:#4DAAAC; }
+/* Level 1 variant: slate teal */
+.level-1.heat-f .ring { border-color:#5A9EB0; } .level-1.heat-f .dot { background:#5A9EB0; color:#5A9EB0; }
+
+/* ── TOPBAR ────────────────────────────────────────── */
+.topbar { position:absolute; top:0; left:0; right:0; z-index:20; padding:20px 20px 0; display:flex; justify-content:space-between; align-items:center; pointer-events:none; }
+.logo { font-family:'Playfair Display',serif; font-size:25px; font-weight:500; text-shadow:0 2px 12px rgba(0,0,0,0.9); pointer-events:all; }
+.logo em { color:var(--accent); font-style:italic; }
+.city-pill { background:rgba(255,255,255,0.92); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); backdrop-filter:blur(16px); pointer-events:all; }
+
+/* ── TOGGLE ────────────────────────────────────────── */
+.toggle-wrap { position:absolute; top:66px; left:50%; transform:translateX(-50%); z-index:20; background:rgba(255,255,255,0.94); border:1px solid var(--border); border-radius:24px; padding:4px; display:flex; gap:2px; backdrop-filter:blur(20px); box-shadow:0 8px 30px rgba(0,0,0,0.6); }
+.toggle-btn { padding:7px 20px; border-radius:20px; border:none; background:transparent; font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); cursor:pointer; transition:all .22s ease; white-space:nowrap; }
+.toggle-btn.active { background:var(--accent); color:#fff; }
+
+/* ── LEGEND ────────────────────────────────────────── */
+.legend { position:absolute; bottom:230px; left:20px; z-index:20; display:flex; flex-direction:column; gap:9px; background:rgba(255,255,255,0.92); border:1px solid var(--border); border-radius:12px; padding:12px 14px; backdrop-filter:blur(12px); }
+.leg-item { display:flex; align-items:center; gap:9px; }
+.leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.leg-label { font-size:11px; color:var(--muted); }
+
+/* ── SPOT CARD ─────────────────────────────────────── */
+.spot-card { position:absolute; bottom:0; left:0; right:0; z-index:30; background:var(--surface); border-top:1px solid var(--border); border-radius:24px 24px 0 0; transform:translateY(100%); transition:transform .36s cubic-bezier(0.32,0.72,0,1); box-shadow:0 -4px 40px rgba(0,0,0,0.10); padding-bottom:max(env(safe-area-inset-bottom),24px); }
+.spot-card.open { transform:translateY(0); }
+.card-handle { width:36px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin:14px auto 0; }
+.card-body { padding:18px 22px 4px; }
+.card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px; }
+.card-name { font-family:'Playfair Display',serif; font-size:22px; font-weight:500; line-height:1.2; flex:1; }
+.card-close { width:28px; height:28px; border-radius:50%; background:rgba(255,255,255,0.06); border:none; color:var(--muted); cursor:pointer; font-size:14px; flex-shrink:0; margin-left:12px; margin-top:3px; display:flex; align-items:center; justify-content:center; }
+.card-nbhd { font-size:11px; font-weight:500; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+.live-vibe { display:inline-flex; align-items:center; gap:7px; background:rgba(255,92,58,0.07); border:1px solid rgba(255,92,58,0.18); border-radius:20px; padding:5px 13px; font-size:12px; font-weight:500; color:var(--accent); margin-bottom:14px; }
+.live-dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:blink 1.5s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.25} }
+.decay-wrap { margin-bottom:14px; }
+.decay-meta { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-bottom:6px; }
+.decay-track { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.decay-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--green),var(--warm)); transition:width .6s ease; }
+.confirm-row { display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.025); border:1px solid var(--border); border-radius:12px; padding:11px 14px; margin-bottom:12px; transition:opacity .4s ease; }
+.confirm-label { font-size:13px; color:var(--muted); }
+.confirm-label strong { color:var(--text); font-weight:500; }
+.confirm-btns { display:flex; gap:7px; flex-shrink:0; margin-left:10px; }
+.confirm-yes { padding:7px 14px; border-radius:20px; background:rgba(59,170,130,0.10); border:1px solid rgba(59,170,130,0.28); font-family:'DM Sans',sans-serif; font-size:12px; font-weight:500; color:var(--green); cursor:pointer; }
+.confirm-no { padding:7px 14px; border-radius:20px; border:1px solid var(--border); background:transparent; font-family:'DM Sans',sans-serif; font-size:12px; color:var(--muted); cursor:pointer; }
+.report-label { font-size:11px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; }
+.vibe-row { display:flex; gap:7px; margin-bottom:14px; }
+.vibe-btn { flex:1; padding:10px 4px; border-radius:11px; border:1px solid var(--border); background:rgba(255,255,255,0.025); font-family:'DM Sans',sans-serif; font-size:11.5px; font-weight:500; color:var(--muted); cursor:pointer; text-align:center; line-height:1.4; transition:all .18s ease; }
+.vibe-btn .ve { display:flex; justify-content:center; margin-bottom:5px; }
+.vibe-btn .ve svg { width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+.card-meta-row { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.card-category { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:20px; padding:4px 11px; font-size:11px; font-weight:500; letter-spacing:0.04em; color:var(--muted); }
+.card-category svg { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0; }
+.live-vibe { display:inline-flex; align-items:center; gap:6px; background:rgba(255,92,58,0.07); border:1px solid rgba(255,92,58,0.18); border-radius:20px; padding:4px 12px; font-size:11.5px; font-weight:500; color:var(--accent); white-space:nowrap; }
+.vb-buzzing.sel { background:rgba(255,92,58,0.14); border-color:rgba(255,92,58,0.4); color:var(--accent); }
+.vb-quiet.sel   { background:rgba(126,184,247,0.1); border-color:rgba(126,184,247,0.35); color:var(--cool); }
+.vb-skip.sel    { background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.2); color:var(--text); }
+.people-row { display:flex; align-items:center; gap:9px; }
+.avatar-stack { display:flex; }
+.av { width:22px; height:22px; border-radius:50%; border:1.5px solid rgba(255,255,255,0.97); background:rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; font-size:10px; margin-left:-6px; }
+.av:first-child { margin-left:0; }
+.people-label { font-size:12px; color:var(--muted); }
+.toast { position:absolute; top:118px; left:50%; transform:translateX(-50%) translateY(-8px); background:rgba(255,255,255,0.98); border:1px solid var(--border); border-radius:20px; padding:9px 20px; font-size:13px; font-weight:500; white-space:nowrap; z-index:50; opacity:0; pointer-events:none; transition:all .24s ease; box-shadow:0 4px 16px rgba(0,0,0,0.10); }
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="topbar">
+  <div class="logo">ro<em>a</em>m</div>
+  <div class="city-pill">New York</div>
+</div>
+<div class="toggle-wrap">
+  <button class="toggle-btn active" onclick="setTime('tonight',this)">Tonight</button>
+  <button class="toggle-btn" onclick="setTime('weekend',this)">This Weekend</button>
+</div>
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:#E84428"></div><span class="leg-label">Buzzing</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#E88030"></div><span class="leg-label">Active</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#4DAAAC"></div><span class="leg-label">Quiet</span></div>
+</div>
+
+<div class="spot-card" id="card">
+  <div class="card-handle"></div>
+  <div class="card-body">
+    <div class="card-header">
+      <div class="card-name" id="cName"></div>
+      <button class="card-close" onclick="closeCard()">✕</button>
+    </div>
+    <div class="card-nbhd" id="cNbhd"></div>
+    <div class="card-meta-row">
+      <div class="card-category" id="cCategory"></div>
+      <div class="live-vibe"><div class="live-dot"></div><span id="cVibe"></span></div>
+    </div>
+    <div class="decay-wrap">
+      <div class="decay-meta"><span>Vibe freshness</span><span id="cDecayTime"></span></div>
+      <div class="decay-track"><div class="decay-fill" id="cDecayBar"></div></div>
+    </div>
+    <div class="confirm-row" id="confirmRow">
+      <div class="confirm-label">Still <strong id="cConfirmWord"></strong>?</div>
+      <div class="confirm-btns">
+        <button class="confirm-yes" onclick="confirmVibe(true)">Still true</button>
+        <button class="confirm-no" onclick="confirmVibe(false)">Not anymore</button>
+      </div>
+    </div>
+    <div class="report-label">Report vibe</div>
+    <div class="vibe-row">
+      <button class="vibe-btn vb-buzzing" id="vbBuzzing" onclick="reportVibe('buzzing')">
+        <span class="ve" id="icoB"></span>Buzzing
+      </button>
+      <button class="vibe-btn vb-quiet" id="vbQuiet" onclick="reportVibe('quiet')">
+        <span class="ve" id="icoQ"></span>Quiet
+      </button>
+      <button class="vibe-btn vb-skip" id="vbSkip" onclick="reportVibe('skip')">
+        <span class="ve" id="icoS"></span>Skip it
+      </button>
+    </div>
+    <div class="people-row">
+      <div class="avatar-stack" id="cAvatars"></div>
+      <span class="people-label" id="cPeople"></span>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SPOTS = [
+  { name:"Dimes Square",          nbhd:"Chinatown",          level:3, heatClass:"heat-a",
+    category:"happening", categoryLabel:"Happening",
+    lat:40.7155, lng:-73.9891,
+    vibe:"Scene is absolutely popping",     confirmWord:"buzzing",    decayPct:95, decayTime:"8 min ago",
+    people:18, avatars:["👩🏻","👨🏻","👩🏽","👨🏾"], weekendVibe:"Saturday night — this is the move" },
+  { name:"Employees Only",        nbhd:"West Village",       level:3, heatClass:"heat-b",
+    category:"eatdrink", categoryLabel:"Eat & Drink",
+    lat:40.7331, lng:-74.0059,
+    vibe:"Packed energy right now",         confirmWord:"buzzing",    decayPct:84, decayTime:"22 min ago",
+    people:14, avatars:["👩🏻","👨🏽","👩🏾","👨🏻"], weekendVibe:"Expect a line by 9pm — worth it" },
+  { name:"Roberta's",             nbhd:"Bushwick",           level:3, heatClass:"heat-b",
+    category:"eatdrink", categoryLabel:"Eat & Drink",
+    lat:40.7051, lng:-73.9284,
+    vibe:"Full energy — worth the wait",    confirmWord:"buzzing",    decayPct:71, decayTime:"52 min ago",
+    people:11, avatars:["👨🏻","👩🏼","👨🏽"],    weekendVibe:"Sunday afternoon is a ritual here" },
+  { name:"Russ & Daughters Café", nbhd:"Lower East Side",    level:2, heatClass:"heat-c",
+    category:"eatdrink", categoryLabel:"Eat & Drink",
+    lat:40.7219, lng:-73.9878,
+    vibe:"Getting busy — catch it now",     confirmWord:"picking up",  decayPct:56, decayTime:"1h 10min ago",
+    people:6,  avatars:["👩🏼","👨🏾"],          weekendVibe:"Weekend brunch line — go early" },
+  { name:"The Flower Shop",       nbhd:"Lower East Side",    level:2, heatClass:"heat-d",
+    category:"happening", categoryLabel:"Happening",
+    lat:40.7196, lng:-73.9860,
+    vibe:"Early crowd forming downstairs",  confirmWord:"picking up",  decayPct:60, decayTime:"48 min ago",
+    people:5,  avatars:["👩🏽","👨🏻","👩🏻"],    weekendVibe:"Great late-night — peaks after midnight" },
+  { name:"Overstory",             nbhd:"Financial District", level:2, heatClass:"heat-c",
+    category:"outside", categoryLabel:"Outside",
+    lat:40.7076, lng:-74.0134,
+    vibe:"After-work crowd arriving",       confirmWord:"picking up",  decayPct:65, decayTime:"1h ago",
+    people:7,  avatars:["👨🏻","👩🏻","👨🏽","👩🏾"], weekendVibe:"Rooftop views make the trip worth it" },
+  { name:"McNally Jackson",       nbhd:"Nolita",             level:1, heatClass:"heat-e",
+    category:"focus", categoryLabel:"Focus",
+    lat:40.7234, lng:-73.9963,
+    vibe:"Calm — perfect focus energy",     confirmWord:"quiet",      decayPct:29, decayTime:"3h ago",
+    people:3,  avatars:["👩🏼","👨🏾"],          weekendVibe:"Slower pace, great for browsing" },
+  { name:"Haymaker Bar",          nbhd:"Chelsea",            level:1, heatClass:"heat-f",
+    category:"eatdrink", categoryLabel:"Eat & Drink",
+    lat:40.7465, lng:-74.0014,
+    vibe:"Quiet — good for conversation",   confirmWord:"quiet",      decayPct:22, decayTime:"2h 40min ago",
+    people:2,  avatars:["👩🏾"],               weekendVibe:"Gets lively after the dinner crowd" },
+];
+
+
+// ── LUCIDE ICONS (inline SVG paths) ───────────────────────────────────────────
+const ICONS = {
+  // Vibe reporting
+  flame:      '<svg viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+  moon:       '<svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>',
+  thumbsDown: '<svg viewBox="0 0 24 24"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>',
+  // Categories
+  utensils:   '<svg viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3v7"/></svg>',
+  calendar:   '<svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>',
+  dumbbell:   '<svg viewBox="0 0 24 24"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>',
+  trees:      '<svg viewBox="0 0 24 24"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z"/><path d="M7 16v4"/><path d="M13.5 15v.1a3 3 0 0 0 1.9 2.8 3 3 0 0 0 2.6-5.3L18 12a3 3 0 0 0-6 0v3Z"/><path d="M17 20v4"/></svg>',
+  bookOpen:   '<svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
+  music:      '<svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
+};
+
+// ── MAPBOX GL ──────────────────────────────────────────────────────────────────
+
+
+const map = new maplibregl.Map({
+  container: 'map',
+  style: 'https://tiles.openfreemap.org/styles/positron',
+  center: [-73.970, 40.725],
+  zoom: 12.2,
+  pitch: 0,
+  attributionControl: false,
+  logoPosition: 'bottom-right'
+});
+
+// Disable map interactions so it feels like an app, not a debug tool
+map.scrollZoom.disable();
+map.addControl(new maplibregl.NavigationControl({ showCompass:false }), 'bottom-right');
+
+// ── MARKERS ────────────────────────────────────────────────────────────────────
+map.on('load', () => {
+  SPOTS.forEach((s) => {
+    const rings = s.level === 3 ? 4 : s.level === 2 ? 3 : 2;
+    const ringHTML = Array(rings).fill(`<div class="ring"></div>`).join('');
+    const el = document.createElement('div');
+    el.className = `roam-marker level-${s.level} ${s.heatClass}`;
+    el.innerHTML = ringHTML + `<div class="dot"></div>`;
+    el.addEventListener('click', e => { e.stopPropagation(); openSpot(s); });
+    new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat([s.lng, s.lat])
+      .addTo(map);
+  });
+});
+
+map.on('click', () => { if (activeSpot) closeCard(); });
+map.on('styleimagemissing', () => {});
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let currentTime = 'tonight', activeSpot = null;
+
+function setTime(t, btn) {
+  currentTime = t;
+  document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (activeSpot) openSpot(activeSpot);
+}
+
+function openSpot(s) {
+  activeSpot = s;
+  resetVibes();
+
+  // Inject lucide icons into vibe buttons
+  document.getElementById('icoB').innerHTML = ICONS.flame;
+  document.getElementById('icoQ').innerHTML = ICONS.moon;
+  document.getElementById('icoS').innerHTML = ICONS.thumbsDown;
+
+  // Category icon mapping
+  const catIcons = {
+    eatdrink: ICONS.utensils,
+    happening: ICONS.calendar,
+    move: ICONS.dumbbell,
+    outside: ICONS.trees,
+    focus: ICONS.bookOpen,
+    culture: ICONS.music,
+  };
+  document.getElementById('cCategory').innerHTML =
+    (catIcons[s.category] || '') + s.categoryLabel;
+
+  document.getElementById('cName').textContent        = s.name;
+  document.getElementById('cNbhd').textContent        = s.nbhd;
+  document.getElementById('cVibe').textContent        = currentTime === 'weekend' ? s.weekendVibe : s.vibe;
+  document.getElementById('cConfirmWord').textContent = s.confirmWord;
+  document.getElementById('cDecayTime').textContent   = currentTime === 'weekend' ? 'Upcoming' : s.decayTime;
+  document.getElementById('cDecayBar').style.width    = (currentTime === 'weekend' ? 100 : s.decayPct) + '%';
+  document.getElementById('cAvatars').innerHTML       = s.avatars.map(a => `<div class="av">${a}</div>`).join('');
+  document.getElementById('cPeople').textContent      = `${s.people} active here`;
+  document.getElementById('confirmRow').style.opacity = '1';
+  document.getElementById('card').classList.add('open');
+  map.easeTo({ center:[s.lng, s.lat - 0.008], duration:400 });
+}
+
+function closeCard() {
+  document.getElementById('card').classList.remove('open');
+  activeSpot = null;
+}
+
+function confirmVibe(yes) {
+  if (yes) {
+    document.getElementById('cDecayBar').style.width    = '100%';
+    document.getElementById('cDecayTime').textContent   = 'Just now';
+    document.getElementById('confirmRow').style.opacity = '0.35';
+    toast('✓ Confirmed — thanks for keeping it real');
+  } else {
+    toast('Got it — report the new vibe below');
+  }
+}
+
+function reportVibe(type) {
+  resetVibes();
+  document.getElementById({buzzing:'vbBuzzing',quiet:'vbQuiet',skip:'vbSkip'}[type]).classList.add('sel');
+  document.getElementById('cVibe').textContent        = {buzzing:'Buzzing right now',quiet:'Quiet right now',skip:'Not worth it tonight'}[type];
+  document.getElementById('cDecayBar').style.width    = '100%';
+  document.getElementById('cDecayTime').textContent   = 'Just now';
+  document.getElementById('confirmRow').style.opacity = '0.35';
+  toast({buzzing:'🔥 Reported buzzing — others will see this',quiet:'🌙 Reported quiet',skip:'👎 Flagged — appreciated'}[type]);
+}
+
+function resetVibes() {
+  ['vbBuzzing','vbQuiet','vbSkip'].forEach(id => document.getElementById(id).classList.remove('sel'));
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
