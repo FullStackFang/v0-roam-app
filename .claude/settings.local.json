@@ -63,7 +63,10 @@
       "Bash(curl -s \"http://localhost:8081/node_modules/expo-router/entry.bundle?platform=android&dev=true&minify=false\")",
       "Bash(npm list:*)",
       "Bash(node -e \"const p = require\\(''nativewind/babel''\\); const result = p\\({types:{}}\\); console.log\\(JSON.stringify\\(Object.keys\\(result\\)\\)\\)\")",
-      "Bash(grep -v \"^\\\\.\\\\.$\")"
+      "Bash(grep -v \"^\\\\.\\\\.$\")",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)"
     ]
   }
 }

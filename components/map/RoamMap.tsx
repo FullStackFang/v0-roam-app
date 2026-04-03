@@ -1,4 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import {
   View,
   StyleSheet,
@@ -35,12 +42,16 @@ import type {
 MapLibreGL.setAccessToken(null);
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
-const CORNELL_CENTER: [number, number] = [-76.4735, 42.4534];
-const DEFAULT_ZOOM = 14;
+
+export interface RoamMapHandle {
+  flyTo: (center: [number, number], zoom: number) => void;
+}
 
 interface RoamMapProps {
   filter: FilterCategory;
   timeFilter: TimeFilter;
+  initialCenter: [number, number];
+  initialZoom: number;
   onVenuePress: (venue: Venue, checkin: Checkin | null) => void;
   onMapPress: () => void;
 }
@@ -100,7 +111,6 @@ function AnimatedMarker({
         style={{ width: 100, height: 100, alignItems: "center", justifyContent: "center" }}
         onTouchEnd={onPress}
       >
-        {/* Radiating rings */}
         {ringAnims.slice(0, marker.level).map((anim, i) => (
           <Animated.View
             key={i}
@@ -127,7 +137,6 @@ function AnimatedMarker({
           />
         ))}
 
-        {/* Center dot */}
         <View
           style={{
             width: dotSize,
@@ -148,170 +157,164 @@ function AnimatedMarker({
   );
 }
 
-export function RoamMap({
-  filter,
-  timeFilter,
-  onVenuePress,
-  onMapPress,
-}: RoamMapProps) {
-  const [venues, setVenues] = useState<Venue[]>([]);
-  const [checkins, setCheckins] = useState<Checkin[]>([]);
-  const [activityPoints, setActivityPoints] =
-    useState<ActivityPointCollection | null>(null);
-  const cameraRef = useRef<CameraRef>(null);
+export const RoamMap = forwardRef<RoamMapHandle, RoamMapProps>(
+  function RoamMap(
+    { filter, timeFilter, initialCenter, initialZoom, onVenuePress, onMapPress },
+    ref
+  ) {
+    const [venues, setVenues] = useState<Venue[]>([]);
+    const [checkins, setCheckins] = useState<Checkin[]>([]);
+    const [activityPoints, setActivityPoints] =
+      useState<ActivityPointCollection | null>(null);
+    const cameraRef = useRef<CameraRef>(null);
 
-  const loadData = useCallback(async () => {
-    try {
-      const [v, c, ap] = await Promise.all([
-        fetchVenues(),
-        fetchActiveCheckins(),
-        fetchActivityPoints(),
-      ]);
-      setVenues(v);
-      setCheckins(c);
-      setActivityPoints(ap);
-    } catch (err) {
-      console.warn("Error loading map data:", err);
-    }
-  }, []);
+    // Expose flyTo to parent via ref
+    useImperativeHandle(ref, () => ({
+      flyTo: (center: [number, number], zoom: number) => {
+        cameraRef.current?.setCamera({
+          centerCoordinate: center,
+          zoomLevel: zoom,
+          animationDuration: 2000,
+          animationMode: "flyTo",
+        });
+      },
+    }));
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+    const loadData = useCallback(async () => {
+      try {
+        const [v, c, ap] = await Promise.all([
+          fetchVenues(),
+          fetchActiveCheckins(),
+          fetchActivityPoints(),
+        ]);
+        setVenues(v);
+        setCheckins(c);
+        setActivityPoints(ap);
+      } catch (err) {
+        console.warn("Error loading map data:", err);
+      }
+    }, []);
 
-  // Realtime subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel("checkins-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "checkins" },
-        () => {
-          loadData();
-        }
-      )
-      .subscribe();
+    useEffect(() => {
+      loadData();
+    }, [loadData]);
 
-    return () => {
-      supabase.removeChannel(channel);
+    // Realtime subscription
+    useEffect(() => {
+      const channel = supabase
+        .channel("checkins-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "checkins" },
+          () => {
+            loadData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }, [loadData]);
+
+    const filteredVenues = filterVenuesByCategory(venues, filter);
+
+    const markers: MarkerData[] = filteredVenues.map((venue, index) => {
+      const venueCheckins = checkins.filter((c) => c.venue_id === venue.id);
+      const avgScore =
+        venueCheckins.length > 0
+          ? venueCheckins.reduce((sum, c) => sum + c.activity_score, 0) /
+            venueCheckins.length
+          : 0.2;
+      const level = getActivityLevel(avgScore);
+      const color = getHeatColor(level, index);
+      const latestCheckin =
+        venueCheckins.length > 0
+          ? venueCheckins.sort(
+              (a, b) =>
+                new Date(b.created_at).getTime() -
+                new Date(a.created_at).getTime()
+            )[0]
+          : null;
+
+      return { venue, level, color, checkin: latestCheckin };
+    });
+
+    const heatmapGeoJSON = activityPoints ?? {
+      type: "FeatureCollection" as const,
+      features: [],
     };
-  }, [loadData]);
 
-  // Build markers from venues + checkins
-  const filteredVenues = filterVenuesByCategory(venues, filter);
-
-  const markers: MarkerData[] = filteredVenues.map((venue, index) => {
-    const venueCheckins = checkins.filter((c) => c.venue_id === venue.id);
-    const avgScore =
-      venueCheckins.length > 0
-        ? venueCheckins.reduce((sum, c) => sum + c.activity_score, 0) /
-          venueCheckins.length
-        : 0.2;
-    const level = getActivityLevel(avgScore);
-    const color = getHeatColor(level, index);
-    const latestCheckin =
-      venueCheckins.length > 0
-        ? venueCheckins.sort(
-            (a, b) =>
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-          )[0]
-        : null;
-
-    return { venue, level, color, checkin: latestCheckin };
-  });
-
-  // Heatmap GeoJSON source
-  const heatmapGeoJSON = activityPoints ?? {
-    type: "FeatureCollection" as const,
-    features: [],
-  };
-
-  return (
-    <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        mapStyle={STYLE_URL}
-        onPress={onMapPress}
-        logoEnabled={false}
-        attributionEnabled={false}
-      >
-        <Camera
-          ref={cameraRef}
-          defaultSettings={{
-            centerCoordinate: CORNELL_CENTER,
-            zoomLevel: DEFAULT_ZOOM,
-          }}
-        />
-
-        {/* Heatmap layer */}
-        <ShapeSource
-          id="heatmap-source"
-          shape={heatmapGeoJSON}
+    return (
+      <View style={styles.container}>
+        <MapView
+          style={styles.map}
+          mapStyle={STYLE_URL}
+          onPress={onMapPress}
+          logoEnabled={false}
+          attributionEnabled={false}
         >
-          <HeatmapLayer
-            id="heatmap-layer"
-            sourceID="heatmap-source"
-            style={{
-              heatmapWeight: [
-                "interpolate",
-                ["linear"],
-                ["get", "weight"],
-                0,
-                0,
-                1,
-                1,
-              ],
-              heatmapIntensity: [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                0,
-                1,
-                18,
-                3,
-              ],
-              heatmapColor: [
-                "interpolate",
-                ["linear"],
-                ["heatmap-density"],
-                0,
-                "rgba(0,0,0,0)",
-                0.2,
-                theme.cool,
-                0.5,
-                theme.warm,
-                0.8,
-                "#F05030",
-                1,
-                theme.heat.a,
-              ],
-              heatmapRadius: [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                0,
-                2,
-                18,
-                30,
-              ],
-              heatmapOpacity: 0.7,
+          <Camera
+            ref={cameraRef}
+            defaultSettings={{
+              centerCoordinate: initialCenter,
+              zoomLevel: initialZoom,
             }}
           />
-        </ShapeSource>
 
-        {/* Venue markers */}
-        {markers.map((m) => (
-          <AnimatedMarker
-            key={m.venue.id}
-            marker={m}
-            onPress={() => onVenuePress(m.venue, m.checkin)}
-          />
-        ))}
-      </MapView>
-    </View>
-  );
-}
+          <ShapeSource id="heatmap-source" shape={heatmapGeoJSON}>
+            <HeatmapLayer
+              id="heatmap-layer"
+              sourceID="heatmap-source"
+              style={{
+                heatmapWeight: [
+                  "interpolate",
+                  ["linear"],
+                  ["get", "weight"],
+                  0, 0,
+                  1, 1,
+                ],
+                heatmapIntensity: [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 1,
+                  18, 3,
+                ],
+                heatmapColor: [
+                  "interpolate",
+                  ["linear"],
+                  ["heatmap-density"],
+                  0, "rgba(0,0,0,0)",
+                  0.2, theme.cool,
+                  0.5, theme.warm,
+                  0.8, "#F05030",
+                  1, theme.heat.a,
+                ],
+                heatmapRadius: [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  0, 2,
+                  18, 30,
+                ],
+                heatmapOpacity: 0.7,
+              }}
+            />
+          </ShapeSource>
+
+          {markers.map((m) => (
+            <AnimatedMarker
+              key={m.venue.id}
+              marker={m}
+              onPress={() => onVenuePress(m.venue, m.checkin)}
+            />
+          ))}
+        </MapView>
+      </View>
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
