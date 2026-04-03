@@ -8,7 +8,6 @@ import {
   Trees,
   BookOpen,
 } from "lucide-react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
 import type { FilterCategory } from "../../types";
 
@@ -73,19 +72,9 @@ function FilterPill({
   );
 }
 
-const TOP_BAR_HEIGHT = 44;
-const TIME_TOGGLE_HEIGHT = 42;
-
 export function FilterBar({ value, onChange }: FilterBarProps) {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View
-      style={[
-        styles.wrapper,
-        { top: insets.top + TOP_BAR_HEIGHT + TIME_TOGGLE_HEIGHT + 20 },
-      ]}
-    >
+    <View style={styles.wrapper} pointerEvents="box-none">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -106,10 +95,7 @@ export function FilterBar({ value, onChange }: FilterBarProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    zIndex: 20,
+    paddingTop: 12,
   },
   container: {
     paddingHorizontal: 16,

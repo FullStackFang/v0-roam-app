@@ -7,7 +7,6 @@ import {
   LayoutChangeEvent,
   StyleSheet,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
 import type { TimeFilter } from "../../types";
 
@@ -17,12 +16,10 @@ interface TimeToggleProps {
 }
 
 export function TimeToggle({ value, onChange }: TimeToggleProps) {
-  const insets = useSafeAreaInsets();
   const slideX = useRef(new Animated.Value(0)).current;
   const [btnWidth, setBtnWidth] = useState(0);
 
   const handleLayout = (e: LayoutChangeEvent) => {
-    // Each button takes half the inner width minus the gap
     setBtnWidth(e.nativeEvent.layout.width);
   };
 
@@ -35,49 +32,49 @@ export function TimeToggle({ value, onChange }: TimeToggleProps) {
   }, [value, btnWidth]);
 
   return (
-    <View style={[styles.container, { top: insets.top + TOP_BAR_HEIGHT + 8 }]}>
-      {/* Sliding indicator */}
-      {btnWidth > 0 && (
-        <Animated.View
-          style={[
-            styles.indicator,
-            { width: btnWidth, transform: [{ translateX: slideX }] },
-          ]}
-        />
-      )}
+    <View style={styles.wrapper} pointerEvents="box-none">
+      <View style={styles.container}>
+        {btnWidth > 0 && (
+          <Animated.View
+            style={[
+              styles.indicator,
+              { width: btnWidth, transform: [{ translateX: slideX }] },
+            ]}
+          />
+        )}
 
-      <Pressable
-        style={styles.btn}
-        onLayout={handleLayout}
-        onPress={() => onChange("tonight")}
-      >
-        <Text
-          style={[styles.btnText, value === "tonight" && styles.btnTextActive]}
+        <Pressable
+          style={styles.btn}
+          onLayout={handleLayout}
+          onPress={() => onChange("tonight")}
         >
-          TONIGHT
-        </Text>
-      </Pressable>
-      <Pressable
-        style={styles.btn}
-        onPress={() => onChange("weekend")}
-      >
-        <Text
-          style={[styles.btnText, value === "weekend" && styles.btnTextActive]}
+          <Text
+            style={[styles.btnText, value === "tonight" && styles.btnTextActive]}
+          >
+            TONIGHT
+          </Text>
+        </Pressable>
+        <Pressable
+          style={styles.btn}
+          onPress={() => onChange("weekend")}
         >
-          THIS WEEKEND
-        </Text>
-      </Pressable>
+          <Text
+            style={[styles.btnText, value === "weekend" && styles.btnTextActive]}
+          >
+            THIS WEEKEND
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
 
-const TOP_BAR_HEIGHT = 44;
-
 const styles = StyleSheet.create({
+  wrapper: {
+    alignItems: "center",
+    paddingTop: 10,
+  },
   container: {
-    position: "absolute",
-    alignSelf: "center",
-    zIndex: 20,
     backgroundColor: theme.surfaceGlass,
     borderWidth: 1,
     borderColor: theme.border,
@@ -85,7 +82,6 @@ const styles = StyleSheet.create({
     padding: 4,
     flexDirection: "row",
     gap: 2,
-    // Frosted glass shadow
     shadowColor: "#1A1B1E",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,

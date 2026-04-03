@@ -6,11 +6,8 @@ import {
   Animated,
   StyleSheet,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
 import type { City } from "../../constants/cities";
-
-export const TOP_BAR_HEIGHT = 44;
 
 interface TopBarProps {
   cities: City[];
@@ -30,7 +27,6 @@ export function TopBar({
   onToggle,
   onSelect,
 }: TopBarProps) {
-  const insets = useSafeAreaInsets();
   const expandAnim = useRef(new Animated.Value(0)).current;
   const pillScale = useRef(new Animated.Value(1)).current;
 
@@ -39,7 +35,7 @@ export function TopBar({
       toValue: isOpen ? 1 : 0,
       damping: isOpen ? 22 : 20,
       stiffness: isOpen ? 180 : 280,
-      useNativeDriver: false, // height interpolation can't use native driver
+      useNativeDriver: false,
     }).start();
   }, [isOpen]);
 
@@ -57,7 +53,6 @@ export function TopBar({
     }).start();
   }, []);
 
-  // Collapsed = just the label row height + padding. Expanded = all rows.
   const closedHeight = ROW_HEIGHT + PILL_PADDING;
   const openHeight = ROW_HEIGHT * cities.length + PILL_PADDING + 4;
 
@@ -67,13 +62,14 @@ export function TopBar({
   });
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+    <View style={styles.container} pointerEvents="box-none">
       <Text style={styles.logo}>
         ro<Text style={styles.logoAccent}>a</Text>m
       </Text>
 
-      <View style={styles.pillAnchor}>
-        {/* Dismiss overlay — catches taps outside the dropdown */}
+      {/* Pill sits in its own elevated stacking context */}
+      <View style={[styles.pillAnchor, isOpen && styles.pillAnchorOpen]}>
+        {/* Dismiss overlay — full-screen tap catcher when dropdown open */}
         {isOpen && (
           <Pressable
             style={styles.dismissOverlay}
@@ -89,7 +85,6 @@ export function TopBar({
               isOpen && styles.cityPillOpen,
             ]}
           >
-            {/* Active city row / toggle trigger */}
             <Pressable
               style={styles.cityRow}
               onPress={onToggle}
@@ -115,12 +110,10 @@ export function TopBar({
               </Animated.View>
             </Pressable>
 
-            {/* Dropdown rows */}
             {cities
               .filter((c) => c.key !== activeCity.key)
               .map((city, i) => {
                 const total = cities.length - 1;
-                // Stagger: each row fades in at a different point in the 0→1 range
                 const start = 0.2 + (i / total) * 0.3;
                 const end = Math.min(start + 0.4, 1);
                 const rowOpacity = expandAnim.interpolate({
@@ -149,16 +142,11 @@ export function TopBar({
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
+    paddingHorizontal: 20,
+    paddingBottom: 8,
   },
   logo: {
     fontFamily: theme.fonts.serif,
@@ -173,13 +161,17 @@ const styles = StyleSheet.create({
   },
   pillAnchor: {
     position: "relative",
+    zIndex: 1,
+  },
+  pillAnchorOpen: {
+    zIndex: 100,
   },
   dismissOverlay: {
-    position: "fixed" as any,
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    position: "absolute",
+    top: -200,
+    left: -400,
+    right: -400,
+    bottom: -2000,
     zIndex: -1,
   },
   cityPill: {
@@ -196,12 +188,12 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
   },
   cityPillOpen: {
-    backgroundColor: "rgba(255,255,255,0.94)",
+    backgroundColor: "rgba(255,255,255,0.96)",
     shadowColor: "#1A1B1E",
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 24,
-    elevation: 12,
+    elevation: 16,
   },
   cityRow: {
     flexDirection: "row",

@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import {
   View,
+  Text,
   StyleSheet,
   Animated,
   Easing,
@@ -26,6 +27,7 @@ import {
   fetchVenues,
   fetchActiveCheckins,
   fetchActivityPoints,
+  fetchActiveBroadcasts,
   getActivityLevel,
   getHeatColor,
   filterVenuesByCategory,
@@ -34,6 +36,7 @@ import type {
   Venue,
   Checkin,
   ActivityPointCollection,
+  StatusBroadcast,
   FilterCategory,
   TimeFilter,
 } from "../../types";
@@ -166,6 +169,7 @@ export const RoamMap = forwardRef<RoamMapHandle, RoamMapProps>(
     const [checkins, setCheckins] = useState<Checkin[]>([]);
     const [activityPoints, setActivityPoints] =
       useState<ActivityPointCollection | null>(null);
+    const [broadcasts, setBroadcasts] = useState<StatusBroadcast[]>([]);
     const cameraRef = useRef<CameraRef>(null);
 
     // Expose flyTo to parent via ref
@@ -182,14 +186,16 @@ export const RoamMap = forwardRef<RoamMapHandle, RoamMapProps>(
 
     const loadData = useCallback(async () => {
       try {
-        const [v, c, ap] = await Promise.all([
+        const [v, c, ap, b] = await Promise.all([
           fetchVenues(),
           fetchActiveCheckins(),
           fetchActivityPoints(),
+          fetchActiveBroadcasts(),
         ]);
         setVenues(v);
         setCheckins(c);
         setActivityPoints(ap);
+        setBroadcasts(b);
       } catch (err) {
         console.warn("Error loading map data:", err);
       }
@@ -199,21 +205,29 @@ export const RoamMap = forwardRef<RoamMapHandle, RoamMapProps>(
       loadData();
     }, [loadData]);
 
-    // Realtime subscription
+    // Realtime subscriptions
     useEffect(() => {
-      const channel = supabase
+      const checkinsChannel = supabase
         .channel("checkins-realtime")
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "checkins" },
-          () => {
-            loadData();
-          }
+          () => loadData()
+        )
+        .subscribe();
+
+      const broadcastsChannel = supabase
+        .channel("broadcasts-realtime")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "status_broadcasts" },
+          () => loadData()
         )
         .subscribe();
 
       return () => {
-        supabase.removeChannel(channel);
+        supabase.removeChannel(checkinsChannel);
+        supabase.removeChannel(broadcastsChannel);
       };
     }, [loadData]);
 
@@ -310,6 +324,38 @@ export const RoamMap = forwardRef<RoamMapHandle, RoamMapProps>(
               onPress={() => onVenuePress(m.venue, m.checkin)}
             />
           ))}
+
+          {/* Broadcast avatar markers */}
+          {broadcasts
+            .filter((b) => b.profile)
+            .map((b) => {
+              // Use a venue location as fallback (first venue in list near campus)
+              // In future, broadcasts will carry their own lat/lng
+              const venueMatch = venues.find((v) =>
+                checkins.some(
+                  (c) => c.user_id === b.user_id && c.venue_id === v.id
+                )
+              );
+              if (!venueMatch) return null;
+
+              const initial = b.profile!.display_name.charAt(0).toUpperCase();
+              return (
+                <MarkerView
+                  key={`broadcast-${b.id}`}
+                  coordinate={[venueMatch.lng + 0.0003, venueMatch.lat + 0.0003]}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                >
+                  <View style={broadcastStyles.wrap}>
+                    {/* Glow ring */}
+                    <View style={broadcastStyles.glow} />
+                    {/* Avatar circle */}
+                    <View style={broadcastStyles.avatar}>
+                      <Text style={broadcastStyles.avatarText}>{initial}</Text>
+                    </View>
+                  </View>
+                </MarkerView>
+              );
+            })}
         </MapView>
       </View>
     );
@@ -322,5 +368,43 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+});
+
+const broadcastStyles = StyleSheet.create({
+  wrap: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  glow: {
+    position: "absolute",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(240,77,44,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(240,77,44,0.25)",
+  },
+  avatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: theme.accent,
+    borderWidth: 2,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: theme.accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  avatarText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
