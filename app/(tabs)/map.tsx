@@ -2,11 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { RoamMap, type RoamMapHandle } from "../../components/map/RoamMap";
+import { BonfireMap, type BonfireMapHandle } from "../../components/map/BonfireMap";
 import { TopBar } from "../../components/map/TopBar";
-import { TimeToggle } from "../../components/map/TimeToggle";
-import { FilterBar } from "../../components/map/FilterBar";
-import { SpotCard } from "../../components/map/SpotCard";
 import { Toast } from "../../components/ui/Toast";
 import { StatusFAB } from "../../components/broadcast/StatusFAB";
 import { BroadcastSheet } from "../../components/broadcast/BroadcastSheet";
@@ -17,14 +14,9 @@ import {
   nearestCity,
   type City,
 } from "../../constants/cities";
-import type { Venue, Checkin, FilterCategory, TimeFilter } from "../../types";
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
-  const [filter, setFilter] = useState<FilterCategory>("all");
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>("tonight");
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
-  const [selectedCheckin, setSelectedCheckin] = useState<Checkin | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -32,7 +24,7 @@ export default function MapScreen() {
   const [cityOpen, setCityOpen] = useState(false);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
 
-  const mapRef = useRef<RoamMapHandle>(null);
+  const mapRef = useRef<BonfireMapHandle>(null);
 
   useEffect(() => {
     (async () => {
@@ -62,26 +54,16 @@ export default function MapScreen() {
     mapRef.current?.flyTo(selected.center, selected.zoom);
   }, []);
 
-  const handleVenuePress = (venue: Venue, checkin: Checkin | null) => {
-    setSelectedVenue(venue);
-    setSelectedCheckin(checkin);
-  };
-
   const handleMapPress = () => {
-    setSelectedVenue(null);
-    setSelectedCheckin(null);
     if (cityOpen) setCityOpen(false);
   };
 
   return (
     <View style={styles.container}>
-      <RoamMap
+      <BonfireMap
         ref={mapRef}
-        filter={filter}
-        timeFilter={timeFilter}
         initialCenter={city.center}
         initialZoom={city.zoom}
-        onVenuePress={handleVenuePress}
         onMapPress={handleMapPress}
       />
 
@@ -93,26 +75,18 @@ export default function MapScreen() {
           onToggle={handleCityToggle}
           onSelect={handleCitySelect}
         />
-        <TimeToggle value={timeFilter} onChange={setTimeFilter} />
-        <FilterBar value={filter} onChange={setFilter} />
       </View>
 
       {/* FAB + Broadcast sheet */}
-      {!selectedVenue && !broadcastOpen && (
+      {!broadcastOpen && (
         <StatusFAB onPress={() => setBroadcastOpen(true)} />
       )}
       <BroadcastSheet
         visible={broadcastOpen}
         onClose={() => setBroadcastOpen(false)}
-        onBroadcast={() => setToastMsg("Broadcast sent — your circles can see you")}
+        onBroadcast={() => setToastMsg("You're live")}
       />
 
-      <SpotCard
-        venue={selectedVenue}
-        checkin={selectedCheckin}
-        onClose={handleMapPress}
-        onToast={setToastMsg}
-      />
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
     </View>
   );

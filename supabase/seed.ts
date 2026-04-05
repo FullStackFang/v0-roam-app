@@ -1,5 +1,5 @@
 /**
- * Seed script for Roam — run with ts-node or tsx:
+ * Seed script for Bonfire — run with ts-node or tsx:
  *   npx tsx supabase/seed.ts
  *
  * Requires EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY

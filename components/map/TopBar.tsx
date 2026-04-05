@@ -63,9 +63,7 @@ export function TopBar({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      <Text style={styles.logo}>
-        ro<Text style={styles.logoAccent}>a</Text>m
-      </Text>
+      <Text style={styles.logo}>bonfire</Text>
 
       {/* Pill sits in its own elevated stacking context */}
       <View style={[styles.pillAnchor, isOpen && styles.pillAnchorOpen]}>
@@ -155,10 +153,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 6,
   },
-  logoAccent: {
-    fontFamily: theme.fonts.serifItalic,
-    color: theme.accent,
-  },
+  // logoAccent style removed — clean wordmark, no accented letter
   pillAnchor: {
     position: "relative",
     zIndex: 1,

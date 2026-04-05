@@ -1,5 +1,5 @@
 -- Migration: Add profiles table, loyalty_score column, and auth trigger
--- Run this against an existing Roam database that already has venues/checkins/vibe_reports
+-- Run this against an existing Bonfire database that already has venues/checkins/vibe_reports
 
 -- ── 1. Add loyalty_score to venues ──────────────────────────
 ALTER TABLE venues ADD COLUMN IF NOT EXISTS loyalty_score float8 DEFAULT 0;

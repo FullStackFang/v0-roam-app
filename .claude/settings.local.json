@@ -67,7 +67,9 @@
       "Bash(openspec new:*)",
       "Bash(openspec status:*)",
       "Bash(openspec instructions:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node -e \"console.log\\(require\\(''''./package.json''''\\).name\\)\")",
+      "Bash(node -e \"console.log\\(require\\(''''./app.json''''\\).expo.name\\)\")"
     ]
   }
 }

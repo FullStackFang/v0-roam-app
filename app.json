@@ -1,13 +1,13 @@
 {
   "expo": {
-    "name": "Roam",
-    "slug": "roam",
+    "name": "Bonfire",
+    "slug": "bonfire",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "roam",
+    "scheme": "bonfire",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,9 +15,9 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.roam.app",
+      "bundleIdentifier": "com.bonfire.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Roam uses your location to show nearby activity."
+        "NSLocationWhenInUseUsageDescription": "Bonfire uses your location to show your friends what's happening nearby."
       }
     },
     "android": {
@@ -26,7 +26,7 @@
         "backgroundColor": "#F5F3EF"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.roam.app",
+      "package": "com.bonfire.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

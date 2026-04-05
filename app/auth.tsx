@@ -74,7 +74,7 @@ export default function AuthScreen() {
     if (!email.endsWith("@cornell.edu")) {
       Alert.alert(
         "Cornell Only",
-        "Roam is currently available to Cornell students only. Please use your @cornell.edu email."
+        "Bonfire is currently available to Cornell students only. Please use your @cornell.edu email."
       );
       return;
     }
@@ -114,11 +114,9 @@ export default function AuthScreen() {
       <View style={styles.inner}>
         {/* Brand mark */}
         <View style={styles.brandBlock}>
-          <Text style={styles.logo}>
-            ro<Text style={styles.logoAccent}>a</Text>m
-          </Text>
+          <Text style={styles.logo}>bonfire</Text>
           <Text style={styles.tagline}>
-            See what's alive around you
+            See who's out. Join in.
           </Text>
         </View>
 
@@ -162,7 +160,7 @@ export default function AuthScreen() {
             <Text style={styles.switchText}>
               {isSignUp
                 ? "Already have an account? Sign in"
-                : "New to Roam? Create account"}
+                : "New to Bonfire? Create account"}
             </Text>
           </Pressable>
         </View>
@@ -195,10 +193,7 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     marginBottom: 10,
   },
-  logoAccent: {
-    fontFamily: theme.fonts.serifItalic,
-    color: theme.accent,
-  },
+  // logoAccent style removed — clean wordmark, no accented letter
   tagline: {
     fontFamily: theme.fonts.sans,
     fontSize: 16,

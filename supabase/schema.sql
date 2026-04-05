@@ -1,5 +1,5 @@
 -- ============================================================
--- Roam — Supabase Schema
+-- Bonfire — Supabase Schema
 -- ============================================================
 
 -- Enable PostGIS for geospatial queries

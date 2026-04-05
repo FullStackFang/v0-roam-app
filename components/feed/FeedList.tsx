@@ -5,37 +5,18 @@ import { fetchFeedData } from "../../lib/queries";
 import { theme } from "../../constants/theme";
 import type { FeedItem } from "../../types";
 
-interface FeedListProps {
-  circleFilter: string | null;
-  onJoinActivity: (activityId: string) => void;
-}
-
-export function FeedList({ circleFilter, onJoinActivity }: FeedListProps) {
+export function FeedList() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
       const data = await fetchFeedData();
-      // Filter by circle if selected
-      if (circleFilter) {
-        setItems(
-          data.filter((item) => {
-            if (item.type === "activity" && item.data.circle_id === circleFilter)
-              return true;
-            // Broadcasts don't have circle_id — show all for now
-            // (will be filtered by circle membership server-side in future)
-            if (item.type === "broadcast") return true;
-            return false;
-          })
-        );
-      } else {
-        setItems(data);
-      }
+      setItems(data);
     } catch (err) {
       console.warn("Error loading feed:", err);
     }
-  }, [circleFilter]);
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -55,9 +36,7 @@ export function FeedList({ circleFilter, onJoinActivity }: FeedListProps) {
     <FlatList
       data={items}
       keyExtractor={getKey}
-      renderItem={({ item }) => (
-        <FeedCard item={item} onJoinActivity={onJoinActivity} />
-      )}
+      renderItem={({ item }) => <FeedCard item={item} />}
       contentContainerStyle={styles.list}
       refreshControl={
         <RefreshControl
