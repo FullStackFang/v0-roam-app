@@ -6,7 +6,7 @@ import {
   Animated,
   StyleSheet,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import { ChevronDown } from "lucide-react-native";
 import { theme } from "../../constants/theme";
 import type { City } from "../../constants/cities";
@@ -152,10 +152,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   logo: {
-    fontFamily: theme.fonts.serif,
-    fontSize: 26,
+    fontFamily: theme.fonts.serifBold,
+    fontSize: 28,
     color: theme.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.6,
     marginTop: 6,
   },
   pillAnchor: {
@@ -174,26 +174,20 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   cityPill: {
-    backgroundColor: theme.surfaceGlass,
+    backgroundColor: "rgba(255,255,255,0.88)",
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: "rgba(0,0,0,0.04)",
     borderRadius: theme.radius.lg,
+    borderCurve: "continuous",
     paddingVertical: PILL_PADDING / 2,
     paddingHorizontal: 14,
     overflow: "hidden",
-    shadowColor: "rgba(255,255,255,0.6)",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-  },
+    boxShadow: theme.shadow.pill,
+  } as any,
   cityPillOpen: {
     backgroundColor: "rgba(255,255,255,0.96)",
-    shadowColor: "#1A1B1E",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 16,
-  },
+    boxShadow: "0px 4px 16px rgba(26,27,30,0.10), 0px 1px 4px rgba(26,27,30,0.06)",
+  } as any,
   cityRow: {
     flexDirection: "row",
     alignItems: "center",

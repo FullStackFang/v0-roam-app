@@ -29,6 +29,14 @@ export type StatusType =
 
 export type BroadcastDuration = "1h" | "until_2am" | "24h" | "today" | "tonight";
 
+export interface BroadcastJoin {
+  id: string;
+  broadcast_id: string;
+  user_id: string;
+  created_at: string;
+  profile?: Profile;
+}
+
 export interface StatusBroadcast {
   id: string;
   user_id: string;
@@ -41,6 +49,8 @@ export interface StatusBroadcast {
   lng: number | null;
   created_at: string;
   profile?: Profile;
+  joins?: BroadcastJoin[];
+  join_count?: number;
 }
 
 export const STATUS_LABELS: Record<StatusType, string> = {
@@ -68,4 +78,12 @@ export const AVAILABILITY_OPTIONS: { duration: BroadcastDuration; emoji: string;
 
 // ── Feed Types ────────────────────────────────────────────
 
-export type FeedItem = { type: "broadcast"; data: StatusBroadcast };
+export type FeedBucket = "happening_now" | "later_today" | "tonight";
+
+export const BUCKET_LABELS: Record<FeedBucket, string> = {
+  happening_now: "Happening Now",
+  later_today: "Later Today",
+  tonight: "Tonight",
+};
+
+export type FeedItem = { type: "broadcast"; data: StatusBroadcast; bucket: FeedBucket };

@@ -1,10 +1,14 @@
-import React, { useRef, useEffect } from "react";
-import { View, Text, Pressable, Animated, StyleSheet } from "react-native";
-import { Radio, Wine, Coffee, Footprints, Sparkles } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { Radio, Wine, Coffee, Footprints, Sparkles, Users } from "lucide-react-native";
+import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 import { AvatarStack } from "./AvatarStack";
-import { STATUS_LABELS, type StatusBroadcast, type StatusType } from "../../types";
+import { JoinButton } from "./JoinButton";
+import { SocialProofLine } from "./SocialProofLine";
+import { joinBroadcast, leaveBroadcast } from "../../lib/queries";
+import { STATUS_LABELS, type StatusBroadcast, type StatusType, type Profile } from "../../types";
 
 const STATUS_ICONS: Partial<Record<StatusType, React.ElementType>> = {
   up_for_drinks: Wine,
@@ -15,18 +19,25 @@ const STATUS_ICONS: Partial<Record<StatusType, React.ElementType>> = {
 
 interface BroadcastCardProps {
   broadcast: StatusBroadcast;
+  currentUserId: string | null;
 }
 
-export function BroadcastCard({ broadcast }: BroadcastCardProps) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const entrance = useRef(new Animated.Value(0)).current;
+export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) {
+  const scale = useSharedValue(1);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [optimisticJoined, setOptimisticJoined] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    Animated.spring(entrance, {
-      toValue: 1,
-      ...theme.spring.gentle,
-    }).start();
-  }, []);
+  const animatedScale = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const isMine = currentUserId === broadcast.user_id;
+  const joins = broadcast.joins ?? [];
+  const joinCount = optimisticJoined !== null
+    ? (broadcast.join_count ?? 0) + (optimisticJoined ? 1 : -1)
+    : (broadcast.join_count ?? 0);
+  const hasJoined = optimisticJoined ?? joins.some((j) => j.user_id === currentUserId);
+  const isForming = joinCount > 0;
 
   const label =
     broadcast.status_type === "custom"
@@ -46,42 +57,95 @@ export function BroadcastCard({ broadcast }: BroadcastCardProps) {
 
   const ContextIcon = STATUS_ICONS[broadcast.status_type];
 
+  const allProfiles: Profile[] = [];
+  if (broadcast.profile) allProfiles.push(broadcast.profile);
+  for (const j of joins) {
+    if (j.profile && j.user_id !== broadcast.user_id) {
+      allProfiles.push(j.profile);
+    }
+  }
+
+  const handleJoinToggle = useCallback(async () => {
+    if (!currentUserId || isMine) return;
+    setJoinLoading(true);
+    const willJoin = !hasJoined;
+    setOptimisticJoined(willJoin);
+    try {
+      if (willJoin) {
+        await joinBroadcast(broadcast.id);
+      } else {
+        await leaveBroadcast(broadcast.id);
+      }
+    } catch {
+      setOptimisticJoined(null);
+    } finally {
+      setJoinLoading(false);
+    }
+  }, [currentUserId, isMine, hasJoined, broadcast.id]);
+
+  useEffect(() => {
+    setOptimisticJoined(null);
+  }, [broadcast.joins?.length]);
+
   return (
     <Animated.View
-      style={{
-        opacity: entrance,
-        transform: [
-          { translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) },
-          { scale },
-        ],
-      }}
+      entering={FadeInUp.springify().damping(20).stiffness(200).duration(350)}
+      style={animatedScale}
     >
       <Pressable
-        style={styles.container}
+        style={[styles.container, isForming && styles.containerForming]}
         onPressIn={() => {
           Haptics.selectionAsync();
-          Animated.spring(scale, { toValue: 0.98, ...theme.spring.snappy }).start();
+          scale.value = withSpring(0.975, { damping: 20, stiffness: 300 });
         }}
         onPressOut={() => {
-          Animated.spring(scale, { toValue: 1, ...theme.spring.bouncy }).start();
+          scale.value = withSpring(1, { damping: 15, stiffness: 200 });
         }}
       >
         <View style={styles.header}>
-          {broadcast.profile && (
-            <AvatarStack profiles={[broadcast.profile]} size={32} />
-          )}
-          <View style={styles.liveBadge}>
-            <Radio size={12} color={theme.accent} strokeWidth={2} />
-            <Text style={styles.liveText}>LIVE</Text>
+          <AvatarStack
+            profiles={allProfiles}
+            totalCount={allProfiles.length}
+            size={isForming ? 28 : 32}
+          />
+          <View style={[styles.badge, isForming ? styles.formingBadge : styles.liveBadge]}>
+            {isForming ? (
+              <>
+                <Users size={11} color={theme.green} strokeWidth={2.25} />
+                <Text style={[styles.badgeText, styles.formingText]}>FORMING</Text>
+              </>
+            ) : (
+              <>
+                <Radio size={11} color={theme.accent} strokeWidth={2.25} />
+                <Text style={[styles.badgeText, styles.liveText]}>LIVE</Text>
+              </>
+            )}
           </View>
         </View>
+
         <View style={styles.statusRow}>
           {ContextIcon && (
             <ContextIcon size={16} color={theme.text} strokeWidth={1.75} />
           )}
-          <Text style={styles.status}>{label}</Text>
+          <Text style={styles.status}>
+            {isForming ? `${label} forming` : label}
+          </Text>
         </View>
-        <Text style={styles.timeLeft}>{timeLeft}</Text>
+
+        {isForming && joins.length > 0 && (
+          <SocialProofLine joins={joins} />
+        )}
+
+        <View style={styles.footer}>
+          <Text style={styles.timeLeft}>{timeLeft}</Text>
+          {!isMine && currentUserId && (
+            <JoinButton
+              joined={hasJoined}
+              loading={joinLoading}
+              onPress={handleJoinToggle}
+            />
+          )}
+        </View>
       </Pressable>
     </Animated.View>
   );
@@ -90,33 +154,50 @@ export function BroadcastCard({ broadcast }: BroadcastCardProps) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: theme.surface,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: 16,
-    gap: 8,
-  },
+    borderRadius: theme.radius.lg,
+    borderCurve: "continuous",
+    padding: 18,
+    gap: 10,
+    boxShadow: theme.shadow.card,
+  } as any,
+  containerForming: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.green,
+    boxShadow: theme.shadow.cardForming,
+  } as any,
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  liveBadge: {
+  badge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: theme.accentTint,
-    borderWidth: 1,
-    borderColor: theme.accentFill,
-    borderRadius: theme.radius.lg,
-    paddingVertical: 4,
+    borderRadius: theme.radius.full,
+    borderCurve: "continuous",
+    paddingVertical: 3,
     paddingHorizontal: 8,
+    borderWidth: 1,
+  } as any,
+  liveBadge: {
+    backgroundColor: theme.accentTint,
+    borderColor: theme.accentFill,
   },
-  liveText: {
+  formingBadge: {
+    backgroundColor: theme.greenTint,
+    borderColor: theme.greenBorder,
+  },
+  badgeText: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 10,
     letterSpacing: 0.8,
+  },
+  liveText: {
     color: theme.accent,
+  },
+  formingText: {
+    color: theme.green,
   },
   statusRow: {
     flexDirection: "row",
@@ -128,9 +209,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.text,
   },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   timeLeft: {
     fontFamily: theme.fonts.sans,
     fontSize: 12,
     color: theme.muted,
+    fontVariant: ["tabular-nums"],
   },
 });

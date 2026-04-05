@@ -5,6 +5,7 @@ import type {
   StatusType,
   BroadcastDuration,
   FeedItem,
+  FeedBucket,
 } from "../types";
 
 // ── Profile Queries ───────────────────────────────────────
@@ -220,9 +221,98 @@ export async function fetchActiveBroadcastCount(): Promise<number> {
   return count ?? 0;
 }
 
+// ── Join Queries ─────────────────────────────────────────
+
+export async function fetchActiveBroadcastsWithJoins(): Promise<StatusBroadcast[]> {
+  const { data, error } = await supabase
+    .from("status_broadcasts")
+    .select("*, profile:profiles(*), joins:broadcast_joins(id, user_id, created_at, profile:profiles(*))")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((b: StatusBroadcast) => ({
+    ...b,
+    join_count: b.joins?.length ?? 0,
+  }));
+}
+
+export async function joinBroadcast(broadcastId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("broadcast_joins")
+    .upsert(
+      { broadcast_id: broadcastId, user_id: user.id },
+      { onConflict: "broadcast_id,user_id" }
+    );
+
+  if (error) throw error;
+}
+
+export async function leaveBroadcast(broadcastId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("broadcast_joins")
+    .delete()
+    .eq("broadcast_id", broadcastId)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+}
+
 // ── Feed ──────────────────────────────────────────────────
 
+const BUCKET_ORDER: FeedBucket[] = ["happening_now", "later_today", "tonight"];
+
+function assignBucket(b: StatusBroadcast): FeedBucket {
+  const msLeft = new Date(b.expires_at).getTime() - Date.now();
+  const twoHours = 2 * 60 * 60 * 1000;
+
+  // Anything expiring within 2 hours is happening now
+  if (msLeft <= twoHours) return "happening_now";
+
+  switch (b.duration) {
+    case "1h":
+      return "happening_now";
+    case "today":
+      return "later_today";
+    case "tonight":
+    case "until_2am":
+      return "tonight";
+    case "24h": {
+      const hour = new Date().getHours();
+      return hour < 18 ? "later_today" : "tonight";
+    }
+  }
+}
+
 export async function fetchFeedData(): Promise<FeedItem[]> {
-  const broadcasts = await fetchActiveBroadcasts();
-  return broadcasts.map((b) => ({ type: "broadcast" as const, data: b }));
+  const broadcasts = await fetchActiveBroadcastsWithJoins();
+
+  const items: FeedItem[] = broadcasts.map((b) => ({
+    type: "broadcast" as const,
+    data: b,
+    bucket: assignBucket(b),
+  }));
+
+  // Sort: bucket priority, then join_count desc, then created_at desc
+  items.sort((a, z) => {
+    const bucketDiff = BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(z.bucket);
+    if (bucketDiff !== 0) return bucketDiff;
+
+    const joinDiff = (z.data.join_count ?? 0) - (a.data.join_count ?? 0);
+    if (joinDiff !== 0) return joinDiff;
+
+    return new Date(z.data.created_at).getTime() - new Date(a.data.created_at).getTime();
+  });
+
+  return items;
 }

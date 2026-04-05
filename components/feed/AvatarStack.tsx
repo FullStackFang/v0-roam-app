@@ -61,9 +61,10 @@ const styles = StyleSheet.create({
   avatar: {
     borderWidth: 2,
     borderColor: theme.surface,
+    borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
-  },
+  } as any,
   avatarText: {
     fontWeight: "600",
     color: "#fff",

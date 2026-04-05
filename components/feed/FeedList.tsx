@@ -1,16 +1,39 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FlatList, RefreshControl, StyleSheet } from "react-native";
+import { SectionList, RefreshControl, StyleSheet } from "react-native";
 import { FeedCard } from "./FeedCard";
+import { BucketHeader } from "./BucketHeader";
 import { FeedEmpty, FeedError, FeedSkeleton } from "./FeedEmpty";
 import { fetchFeedData } from "../../lib/queries";
+import { supabase } from "../../lib/supabase";
 import { theme } from "../../constants/theme";
-import type { FeedItem } from "../../types";
+import { BUCKET_LABELS, type FeedItem, type FeedBucket } from "../../types";
+
+interface FeedSection {
+  bucket: FeedBucket;
+  title: string;
+  data: FeedItem[];
+}
+
+function groupByBucket(items: FeedItem[]): FeedSection[] {
+  const buckets: FeedBucket[] = ["happening_now", "later_today", "tonight"];
+  const sections: FeedSection[] = [];
+
+  for (const bucket of buckets) {
+    const data = items.filter((i) => i.bucket === bucket);
+    if (data.length > 0) {
+      sections.push({ bucket, title: BUCKET_LABELS[bucket], data });
+    }
+  }
+
+  return sections;
+}
 
 export function FeedList() {
   const [items, setItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -25,7 +48,37 @@ export function FeedList() {
   }, []);
 
   useEffect(() => {
+    // Get current user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+
     loadData();
+
+    // Realtime: broadcasts
+    const broadcastChannel = supabase
+      .channel("feed-broadcasts")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "status_broadcasts" },
+        () => loadData()
+      )
+      .subscribe();
+
+    // Realtime: joins
+    const joinChannel = supabase
+      .channel("feed-joins")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "broadcast_joins" },
+        () => loadData()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(broadcastChannel);
+      supabase.removeChannel(joinChannel);
+    };
   }, [loadData]);
 
   const onRefresh = useCallback(async () => {
@@ -37,13 +90,21 @@ export function FeedList() {
   if (loading) return <FeedSkeleton />;
   if (error) return <FeedError onRetry={loadData} />;
 
+  const sections = groupByBucket(items);
+
   return (
-    <FlatList
-      data={items}
+    <SectionList
+      sections={sections}
       keyExtractor={(item) => `${item.type}-${item.data.id}`}
-      renderItem={({ item }) => <FeedCard item={item} />}
+      renderItem={({ item }) => (
+        <FeedCard item={item} currentUserId={currentUserId} />
+      )}
+      renderSectionHeader={({ section }) => (
+        <BucketHeader title={section.title} />
+      )}
       contentContainerStyle={styles.list}
       ListEmptyComponent={FeedEmpty}
+      stickySectionHeadersEnabled={false}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}

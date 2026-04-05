@@ -3,7 +3,7 @@ import { Platform, View, Pressable } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapPin, List } from "lucide-react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 
 function FocusDot() {
@@ -44,14 +44,13 @@ export default function TabsLayout() {
         tabBarShowLabel: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
-          backgroundColor: theme.surface,
-          borderTopWidth: 1,
-          borderTopColor: theme.border,
+          backgroundColor: theme.surfaceElevated,
+          borderTopWidth: 0,
           height: tabBarHeight,
           paddingBottom: Math.max(insets.bottom, Platform.OS === "android" ? 16 : 0),
           elevation: 0,
-          shadowOpacity: 0,
-        },
+          boxShadow: theme.shadow.tab,
+        } as any,
         tabBarActiveTintColor: theme.accent,
         tabBarInactiveTintColor: theme.muted,
         tabBarIconStyle: {

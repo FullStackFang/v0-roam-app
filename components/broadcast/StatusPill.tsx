@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Pressable, Animated, Easing, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 import {
   AVAILABILITY_OPTIONS,
@@ -206,21 +206,19 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   pill: {
-    backgroundColor: theme.surfaceGlass,
+    backgroundColor: "rgba(255,255,255,0.88)",
     borderWidth: 1,
-    borderColor: theme.border,
+    borderColor: "rgba(0,0,0,0.04)",
     borderRadius: theme.radius.lg,
+    borderCurve: "continuous",
     paddingHorizontal: 12,
     overflow: "hidden",
-  },
+    boxShadow: theme.shadow.pill,
+  } as any,
   pillOpen: {
     backgroundColor: "rgba(255,255,255,0.96)",
-    shadowColor: "#1A1B1E",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 16,
-  },
+    boxShadow: "0px 4px 16px rgba(26,27,30,0.10), 0px 1px 4px rgba(26,27,30,0.06)",
+  } as any,
   row: {
     flexDirection: "row",
     alignItems: "center",

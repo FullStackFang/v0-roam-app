@@ -1,6 +1,7 @@
-import React, { useRef, useCallback } from "react";
-import { View, Text, Pressable, Animated, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 
 interface StatusFABProps {
@@ -9,25 +10,41 @@ interface StatusFABProps {
 }
 
 export function StatusFAB({ onPress, isLive }: StatusFABProps) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+  const dotOpacity = useSharedValue(1);
 
-  const handlePressIn = useCallback(() => {
+  React.useEffect(() => {
+    if (isLive) {
+      dotOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.4, { duration: 800 }),
+          withTiming(1, { duration: 800 })
+        ),
+        -1,
+        false
+      );
+    }
+  }, [isLive]);
+
+  const animatedScale = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: dotOpacity.value,
+  }));
+
+  const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Animated.spring(scale, {
-      toValue: 0.92,
-      ...theme.spring.snappy,
-    }).start();
-  }, []);
+    scale.value = withSpring(0.92, { damping: 20, stiffness: 300 });
+  };
 
-  const handlePressOut = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 1,
-      ...theme.spring.bouncy,
-    }).start();
-  }, []);
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+  };
 
   return (
-    <Animated.View style={[styles.container, { transform: [{ scale }] }]}>
+    <Animated.View style={[styles.container, animatedScale]}>
       <Pressable
         style={[styles.btn, isLive && styles.btnLive]}
         onPress={onPress}
@@ -36,7 +53,7 @@ export function StatusFAB({ onPress, isLive }: StatusFABProps) {
       >
         {isLive ? (
           <View style={styles.liveInner}>
-            <View style={styles.liveDot} />
+            <Animated.View style={[styles.liveDot, dotStyle]} />
             <Text style={styles.liveText}>Live</Text>
           </View>
         ) : (
@@ -55,29 +72,25 @@ const styles = StyleSheet.create({
     zIndex: theme.z.fab,
   },
   btn: {
-    height: 52,
-    paddingHorizontal: 28,
-    borderRadius: 26,
+    height: 54,
+    paddingHorizontal: 30,
+    borderRadius: 27,
+    borderCurve: "continuous",
     backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
-  },
+    boxShadow: theme.shadow.fab,
+  } as any,
   btnLive: {
     backgroundColor: theme.surface,
     borderWidth: 1.5,
     borderColor: theme.accentBorder,
-    shadowColor: "#1A1B1E",
-    shadowOpacity: 0.08,
-  },
+    boxShadow: theme.shadow.pill,
+  } as any,
   label: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 16,
-    color: "#fff",
+    color: "#FFFCFA",
     letterSpacing: 0.2,
   },
   liveInner: {

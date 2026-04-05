@@ -4,13 +4,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
 import { FeedList } from "../../components/feed/FeedList";
 
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
+  const dayName = DAYS[new Date().getDay()];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 12 }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Feed</Text>
+        <View>
+          <Text style={styles.title}>Feed</Text>
+          <Text style={styles.subtitle}>{dayName}</Text>
+        </View>
       </View>
 
       <FeedList />
@@ -26,14 +32,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
     paddingHorizontal: 20,
     marginBottom: 14,
   },
   title: {
-    fontFamily: theme.fonts.serif,
-    fontSize: 28,
+    fontFamily: theme.fonts.serifBold,
+    fontSize: 32,
     color: theme.text,
-    letterSpacing: -0.5,
+    letterSpacing: -0.8,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.sans,
+    fontSize: 13,
+    color: theme.muted,
+    marginTop: 1,
   },
 });

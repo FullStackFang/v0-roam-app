@@ -1,5 +1,6 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, { FadeIn, withRepeat, withTiming, useSharedValue, useAnimatedStyle } from "react-native-reanimated";
 import { Users } from "lucide-react-native";
 import { theme } from "../../constants/theme";
 
@@ -7,7 +8,7 @@ export function FeedEmpty() {
   return (
     <View style={styles.container}>
       <View style={styles.iconWrap}>
-        <Users size={28} color={theme.muted} strokeWidth={1.5} />
+        <Users size={28} color={theme.accent} strokeWidth={1.5} />
       </View>
       <Text style={styles.title}>No one's out yet</Text>
       <Text style={styles.subtitle}>
@@ -24,27 +25,41 @@ export function FeedError({ onRetry }: { onRetry: () => void }) {
       <Text style={[styles.subtitle, { marginBottom: 16 }]}>
         Check your connection and try again
       </Text>
-      <Text style={styles.retry} onPress={onRetry}>
-        Try again
-      </Text>
+      <Pressable style={styles.retryBtn} onPress={onRetry}>
+        <Text style={styles.retryText}>Try again</Text>
+      </Pressable>
     </View>
   );
 }
 
+function ShimmerBlock({ style }: { style: any }) {
+  const opacity = useSharedValue(0.04);
+
+  React.useEffect(() => {
+    opacity.value = withRepeat(withTiming(0.09, { duration: 1000 }), -1, true);
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    backgroundColor: `rgba(26,27,30,${opacity.value})`,
+  }));
+
+  return <Animated.View style={[style, animatedStyle]} />;
+}
+
 export function FeedSkeleton() {
   return (
-    <View style={styles.skeletonList}>
+    <Animated.View entering={FadeIn.duration(300)} style={styles.skeletonList}>
       {[0, 1, 2].map((i) => (
         <View key={i} style={styles.skeletonCard}>
           <View style={styles.skeletonRow}>
-            <View style={styles.skeletonCircle} />
-            <View style={styles.skeletonPill} />
+            <ShimmerBlock style={styles.skeletonCircle} />
+            <ShimmerBlock style={styles.skeletonPill} />
           </View>
-          <View style={styles.skeletonLine} />
-          <View style={[styles.skeletonLine, { width: "40%" }]} />
+          <ShimmerBlock style={styles.skeletonLine} />
+          <ShimmerBlock style={[styles.skeletonLine, { width: "40%" }]} />
         </View>
       ))}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -57,28 +72,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(0,0,0,0.03)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderCurve: "continuous",
+    backgroundColor: theme.accentTint,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
-  },
+  } as any,
   title: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 16,
+    fontFamily: theme.fonts.serif,
+    fontSize: 18,
     color: theme.text,
     marginBottom: 6,
   },
   subtitle: {
     fontFamily: theme.fonts.sans,
-    fontSize: 14,
+    fontSize: 13,
     color: theme.muted,
     textAlign: "center",
     lineHeight: 20,
   },
-  retry: {
+  retryBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: theme.radius.full,
+    borderCurve: "continuous",
+    backgroundColor: theme.accentTint,
+  } as any,
+  retryText: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 14,
     color: theme.accent,
@@ -89,12 +112,12 @@ const styles = StyleSheet.create({
   },
   skeletonCard: {
     backgroundColor: theme.surface,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.border,
-    padding: 16,
+    borderRadius: theme.radius.lg,
+    borderCurve: "continuous",
+    padding: 18,
     gap: 10,
-  },
+    boxShadow: theme.shadow.card,
+  } as any,
   skeletonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -104,18 +127,15 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.04)",
   },
   skeletonPill: {
     width: 48,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "rgba(0,0,0,0.04)",
   },
   skeletonLine: {
     width: "60%",
     height: 14,
     borderRadius: 7,
-    backgroundColor: "rgba(0,0,0,0.04)",
   },
 });

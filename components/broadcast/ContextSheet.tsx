@@ -1,10 +1,17 @@
-import React, { useEffect, useRef } from "react";
-import { View, Text, Pressable, Animated, StyleSheet } from "react-native";
-import * as Haptics from "expo-haptics";
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, { FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import { Wine, Coffee, Footprints, Sparkles } from "lucide-react-native";
+import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
-import { CONTEXT_OPTIONS, type StatusType } from "../../types";
+import type { StatusType } from "../../types";
 
-const SHEET_HEIGHT = 200;
+const CONTEXT_PILLS: { type: StatusType; label: string; Icon: React.ElementType }[] = [
+  { type: "up_for_drinks", label: "Drinks", Icon: Wine },
+  { type: "grabbing_coffee", label: "Coffee", Icon: Coffee },
+  { type: "walk", label: "Walk", Icon: Footprints },
+  { type: "open", label: "Open", Icon: Sparkles },
+];
 
 interface ContextSheetProps {
   visible: boolean;
@@ -13,29 +20,7 @@ interface ContextSheetProps {
 }
 
 export function ContextSheet({ visible, onSelect, onSkip }: ContextSheetProps) {
-  const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
-  const pillAnims = useRef(
-    CONTEXT_OPTIONS.map(() => new Animated.Value(0))
-  ).current;
-
-  useEffect(() => {
-    Animated.spring(translateY, {
-      toValue: visible ? 0 : SHEET_HEIGHT,
-      ...theme.spring.bouncy,
-    }).start();
-
-    if (visible) {
-      // Stagger pills entrance
-      pillAnims.forEach((anim, i) => {
-        anim.setValue(0);
-        Animated.spring(anim, {
-          toValue: 1,
-          delay: 80 + i * 50,
-          ...theme.spring.gentle,
-        }).start();
-      });
-    }
-  }, [visible]);
+  if (!visible) return null;
 
   const handleSelect = (statusType: StatusType) => {
     Haptics.selectionAsync();
@@ -44,20 +29,20 @@ export function ContextSheet({ visible, onSelect, onSkip }: ContextSheetProps) {
 
   return (
     <Animated.View
-      style={[styles.container, { transform: [{ translateY }] }]}
-      pointerEvents={visible ? "auto" : "none"}
+      entering={FadeInDown.springify().damping(18).stiffness(180)}
+      style={styles.container}
     >
       <View style={styles.handle} />
       <View style={styles.body}>
         <Text style={styles.title}>What are you up to?</Text>
 
         <View style={styles.pillRow}>
-          {CONTEXT_OPTIONS.map((opt, i) => (
-            <AnimatedPill
+          {CONTEXT_PILLS.map((opt, i) => (
+            <ContextPill
               key={opt.type}
-              anim={pillAnims[i]}
-              emoji={opt.emoji}
+              Icon={opt.Icon}
               label={opt.label}
+              index={i}
               onPress={() => handleSelect(opt.type)}
             />
           ))}
@@ -71,41 +56,39 @@ export function ContextSheet({ visible, onSelect, onSkip }: ContextSheetProps) {
   );
 }
 
-function AnimatedPill({
-  anim,
-  emoji,
+function ContextPill({
+  Icon,
   label,
+  index,
   onPress,
 }: {
-  anim: Animated.Value;
-  emoji: string;
+  Icon: React.ElementType;
   label: string;
+  index: number;
   onPress: () => void;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
     <Animated.View
-      style={{
-        flex: 1,
-        opacity: anim,
-        transform: [
-          { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
-          { scale },
-        ],
-      }}
+      entering={FadeInUp.delay(80 + index * 60).springify().damping(18).stiffness(180)}
+      style={[{ flex: 1 }, animatedStyle]}
     >
       <Pressable
         style={styles.pill}
         onPress={onPress}
-        onPressIn={() =>
-          Animated.spring(scale, { toValue: 0.93, ...theme.spring.snappy }).start()
-        }
-        onPressOut={() =>
-          Animated.spring(scale, { toValue: 1, ...theme.spring.bouncy }).start()
-        }
+        onPressIn={() => {
+          scale.value = withSpring(0.93, { damping: 20, stiffness: 300 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+        }}
       >
-        <Text style={styles.pillEmoji}>{emoji}</Text>
+        <Icon size={20} color={theme.text} strokeWidth={1.5} />
         <Text style={styles.pillLabel}>{label}</Text>
       </Pressable>
     </Animated.View>
@@ -122,19 +105,14 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderTopLeftRadius: theme.radius.xl,
     borderTopRightRadius: theme.radius.xl,
-    borderTopWidth: 1,
-    borderTopColor: theme.border,
-    shadowColor: "#1A1B1E",
-    shadowOffset: { width: 0, height: -6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 32,
-    elevation: 20,
+    borderCurve: "continuous",
+    boxShadow: theme.shadow.sheet,
     paddingBottom: 34,
-  },
+  } as any,
   handle: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: "rgba(0,0,0,0.1)",
+    backgroundColor: "rgba(0,0,0,0.08)",
     borderRadius: 2,
     marginTop: 14,
     alignSelf: "center",
@@ -144,10 +122,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   title: {
-    fontFamily: theme.fonts.sansMedium,
-    fontSize: 14,
-    color: theme.muted,
-    letterSpacing: 0.2,
+    fontFamily: theme.fonts.serif,
+    fontSize: 18,
+    color: theme.text,
     marginBottom: 14,
   },
   pillRow: {
@@ -157,16 +134,13 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 12,
+    gap: 6,
+    paddingVertical: 14,
     borderRadius: theme.radius.md,
-    backgroundColor: "rgba(0,0,0,0.02)",
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  pillEmoji: {
-    fontSize: 22,
-  },
+    borderCurve: "continuous",
+    backgroundColor: theme.bg,
+    boxShadow: theme.shadow.pill,
+  } as any,
   pillLabel: {
     fontFamily: theme.fonts.sansMedium,
     fontSize: 12,

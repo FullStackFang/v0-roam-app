@@ -17,6 +17,9 @@ export const theme = {
   green: "#38A07A",
   error: "#D93025",
   errorTint: "rgba(217,48,37,0.08)",
+  greenTint: "rgba(56,160,122,0.08)",
+  greenBorder: "rgba(56,160,122,0.25)",
+  surfaceElevated: "#FEFEFE",
 
   heat: {
     a: "#E84428",
@@ -51,6 +54,19 @@ export const theme = {
     md: 14,
     lg: 20,
     xl: 28,
+    full: 999,
+  },
+
+  /* ── Shadows (boxShadow CSS syntax — requires New Architecture) ──── */
+  shadow: {
+    card: "0px 1px 3px rgba(26,27,30,0.04), 0px 4px 12px rgba(26,27,30,0.03)",
+    cardForming: "0px 1px 4px rgba(56,160,122,0.06), 0px 6px 16px rgba(26,27,30,0.04)",
+    fab: "0px 2px 8px rgba(240,77,44,0.25), 0px 8px 24px rgba(240,77,44,0.15)",
+    sheet: "0px -2px 8px rgba(26,27,30,0.04), 0px -12px 40px rgba(26,27,30,0.06)",
+    pill: "0px 1px 4px rgba(26,27,30,0.05), 0px 2px 8px rgba(26,27,30,0.03)",
+    toast: "0px 4px 16px rgba(26,27,30,0.10), 0px 1px 4px rgba(26,27,30,0.06)",
+    tab: "0px -1px 3px rgba(26,27,30,0.03), 0px -4px 12px rgba(26,27,30,0.02)",
+    joinBtn: "0px 1px 4px rgba(240,77,44,0.25), 0px 3px 10px rgba(240,77,44,0.12)",
   },
 
   /* ── Z-index layers ──────────────────────────────────────────────── */
