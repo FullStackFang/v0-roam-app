@@ -73,6 +73,21 @@ export const CONTEXT_OPTIONS: { type: StatusType; emoji: string; label: string }
   { type: "open", emoji: "\u2728", label: "Open" },
 ];
 
+export interface QuickAction {
+  type: StatusType;
+  label: string;
+  description: string;
+  iconName: string;
+}
+
+export const QUICK_ACTION_OPTIONS: QuickAction[] = [
+  { type: "up_for_dinner", label: "Grab Food", description: "Find someone to eat with", iconName: "Utensils" },
+  { type: "up_for_drinks", label: "Get Drinks", description: "Head out for drinks", iconName: "Wine" },
+  { type: "walk", label: "Go Somewhere", description: "Walk, explore, get outside", iconName: "Footprints" },
+  { type: "open", label: "Do Something", description: "Open to whatever's happening", iconName: "Sparkles" },
+  { type: "grabbing_coffee", label: "Grab Coffee", description: "Quick coffee run", iconName: "Coffee" },
+];
+
 export const AVAILABILITY_OPTIONS: { duration: BroadcastDuration; emoji: string; label: string }[] = [
   { duration: "1h", emoji: "\ud83d\udfe2", label: "Available now" },
   { duration: "today", emoji: "\u2600\ufe0f", label: "Out today" },

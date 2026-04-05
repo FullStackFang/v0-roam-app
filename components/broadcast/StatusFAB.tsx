@@ -1,15 +1,26 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withRepeat, withSequence, withTiming } from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withSequence,
+  withTiming,
+  FadeIn,
+  FadeOut,
+} from "react-native-reanimated";
+import { Plus } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 
 interface StatusFABProps {
   onPress: () => void;
   isLive: boolean;
+  visible?: boolean;
 }
 
-export function StatusFAB({ onPress, isLive }: StatusFABProps) {
+export function StatusFAB({ onPress, isLive, visible = true }: StatusFABProps) {
   const scale = useSharedValue(1);
   const dotOpacity = useSharedValue(1);
 
@@ -43,10 +54,16 @@ export function StatusFAB({ onPress, isLive }: StatusFABProps) {
     scale.value = withSpring(1, { damping: 15, stiffness: 200 });
   };
 
+  if (!visible) return null;
+
   return (
-    <Animated.View style={[styles.container, animatedScale]}>
+    <Animated.View
+      entering={FadeIn.springify().damping(20)}
+      exiting={FadeOut.duration(150)}
+      style={[styles.container, animatedScale]}
+    >
       <Pressable
-        style={[styles.btn, isLive && styles.btnLive]}
+        style={[styles.btn, isLive ? styles.btnLive : styles.btnPlus]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -57,7 +74,7 @@ export function StatusFAB({ onPress, isLive }: StatusFABProps) {
             <Text style={styles.liveText}>Live</Text>
           </View>
         ) : (
-          <Text style={styles.label}>I'm out</Text>
+          <Plus size={24} color="#FFFCFA" strokeWidth={2.5} />
         )}
       </Pressable>
     </Animated.View>
@@ -67,32 +84,31 @@ export function StatusFAB({ onPress, isLive }: StatusFABProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    bottom: 90,
-    alignSelf: "center",
+    bottom: 20,
+    right: 20,
     zIndex: theme.z.fab,
   },
   btn: {
-    height: 54,
-    paddingHorizontal: 30,
-    borderRadius: 27,
-    borderCurve: "continuous",
-    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
+    borderCurve: "continuous",
+  } as any,
+  btnPlus: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: theme.accent,
     boxShadow: theme.shadow.fab,
   } as any,
   btnLive: {
+    height: 48,
+    paddingHorizontal: 24,
+    borderRadius: 24,
     backgroundColor: theme.surface,
     borderWidth: 1.5,
     borderColor: theme.accentBorder,
     boxShadow: theme.shadow.pill,
   } as any,
-  label: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 16,
-    color: "#FFFCFA",
-    letterSpacing: 0.2,
-  },
   liveInner: {
     flexDirection: "row",
     alignItems: "center",

@@ -1,7 +1,7 @@
 import "react-native-url-polyfill/auto";
 import "../global.css";
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -86,7 +86,12 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <Slot />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="profile" options={{ presentation: "modal" }} />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="index" />
+      </Stack>
     </SafeAreaProvider>
   );
 }

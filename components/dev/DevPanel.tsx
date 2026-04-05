@@ -140,7 +140,7 @@ function ActionRow({
 const styles = StyleSheet.create({
   anchor: {
     position: "absolute",
-    bottom: 90,
+    bottom: 160,
     right: 20,
     zIndex: theme.z.fab,
     alignItems: "flex-end",

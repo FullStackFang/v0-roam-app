@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { BonfireMap, type BonfireMapHandle } from "../../components/map/BonfireMap";
+import { MapHeaderBar } from "../../components/map/MapHeaderBar";
+import { QuickActionsBar } from "../../components/map/QuickActionsBar";
 import { Toast } from "../../components/ui/Toast";
-import { StatusFAB } from "../../components/broadcast/StatusFAB";
-import { ContextSheet } from "../../components/broadcast/ContextSheet";
+import { onFirePress } from "../../lib/events";
 import { StatusPill } from "../../components/broadcast/StatusPill";
 import { theme } from "../../constants/theme";
 import { STATIC_CITIES } from "../../constants/cities";
 import {
   goLive,
   fetchMyActiveBroadcast,
+  fetchProfile,
   updateBroadcastContext,
   updateBroadcastAvailability,
   endBroadcast,
@@ -20,24 +22,27 @@ import {
 import { updateLastKnownLocation, scheduleLiveReminder, cancelAllReminders } from "../../lib/notifications";
 import { supabase } from "../../lib/supabase";
 import { DevPanel } from "../../components/dev/DevPanel";
-import type { StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
+import type { Profile, StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
 
 export default function MapScreen() {
-  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [myProfile, setMyProfile] = useState<Profile | null>(null);
 
   const [myBroadcast, setMyBroadcast] = useState<StatusBroadcast | null>(null);
-  const [contextSheetVisible, setContextSheetVisible] = useState(false);
   const [sending, setSending] = useState(false);
+  const [carouselOpen, setCarouselOpen] = useState(false);
 
   const mapRef = useRef<BonfireMapHandle>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
+      if (!user) return;
+      setCurrentUserId(user.id);
+      fetchProfile(user.id).then(setMyProfile);
     });
 
     (async () => {
@@ -55,51 +60,44 @@ export default function MapScreen() {
     })();
 
     fetchMyActiveBroadcast().then(setMyBroadcast);
+
+    const unsubFire = onFirePress(() => {
+      setCarouselOpen(true);
+    });
+
+    return () => { unsubFire(); };
   }, []);
 
   // ── Broadcast flow ──────────────────────────────────────
 
-  const handleFabPress = useCallback(async () => {
-    if (myBroadcast) return;
-    if (!userCoords) {
-      setToastMsg("Enable location to go live");
-      return;
-    }
-
-    setSending(true);
-    try {
-      const broadcast = await goLive({
-        lat: userCoords[1],
-        lng: userCoords[0],
-      });
-      setMyBroadcast(broadcast);
-      setContextSheetVisible(true);
-      setToastMsg("You're live");
-      scheduleLiveReminder(broadcast.id).catch(() => {});
-    } catch (err: any) {
-      setToastMsg(err.message);
-    } finally {
-      setSending(false);
-    }
-  }, [myBroadcast, userCoords]);
-
-  const handleContextSelect = useCallback(
+  const handleQuickAction = useCallback(
     async (statusType: StatusType) => {
-      if (!myBroadcast) return;
-      try {
-        await updateBroadcastContext(myBroadcast.id, statusType);
-        setMyBroadcast((prev) =>
-          prev ? { ...prev, status_type: statusType } : null
-        );
-      } catch {}
-      setContextSheetVisible(false);
-    },
-    [myBroadcast]
-  );
+      if (myBroadcast || sending) return;
+      if (!userCoords) {
+        setToastMsg("Enable location to go live");
+        return;
+      }
 
-  const handleContextSkip = useCallback(() => {
-    setContextSheetVisible(false);
-  }, []);
+      setSending(true);
+      setCarouselOpen(false);
+      try {
+        const broadcast = await goLive({
+          lat: userCoords[1],
+          lng: userCoords[0],
+        });
+        await updateBroadcastContext(broadcast.id, statusType);
+        setMyBroadcast({ ...broadcast, status_type: statusType });
+        setToastMsg("You're live");
+        scheduleLiveReminder(broadcast.id).catch(() => {});
+      } catch (err: any) {
+        setToastMsg(err.message);
+        setCarouselOpen(true);
+      } finally {
+        setSending(false);
+      }
+    },
+    [myBroadcast, sending, userCoords]
+  );
 
   const handleChangeAvailability = useCallback(
     async (duration: BroadcastDuration) => {
@@ -141,43 +139,46 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <BonfireMap
-        ref={mapRef}
-        initialCenter={userCoords ?? STATIC_CITIES[0].center}
-        initialZoom={userCoords ? 15 : STATIC_CITIES[0].zoom}
-        currentUserId={currentUserId}
+      <MapHeaderBar
+        profile={myProfile}
+        onProfilePress={() => router.push("/profile")}
       />
 
-      <View
-        style={[styles.controlsOverlay, { paddingTop: insets.top + 8 }]}
-        pointerEvents="box-none"
-      >
-        <View style={styles.topRow} pointerEvents="box-none">
-          {myBroadcast && (
-            <StatusPill
-              broadcast={myBroadcast}
-              onChangeAvailability={handleChangeAvailability}
-              onToggleVisibility={handleToggleVisibility}
-              onEndBroadcast={handleEndBroadcast}
-            />
-          )}
+      <View style={styles.mapWrapper}>
+        <BonfireMap
+          ref={mapRef}
+          initialCenter={userCoords ?? STATIC_CITIES[0].center}
+          initialZoom={userCoords ? 15 : STATIC_CITIES[0].zoom}
+          currentUserId={currentUserId}
+        />
+
+        <View
+          style={styles.controlsOverlay}
+          pointerEvents="box-none"
+        >
+          <View style={styles.topRow} pointerEvents="box-none">
+            {myBroadcast && (
+              <StatusPill
+                broadcast={myBroadcast}
+                onChangeAvailability={handleChangeAvailability}
+                onToggleVisibility={handleToggleVisibility}
+                onEndBroadcast={handleEndBroadcast}
+              />
+            )}
+          </View>
         </View>
+
+        {!myBroadcast && carouselOpen && (
+          <QuickActionsBar
+            onSelect={handleQuickAction}
+            onDismiss={() => setCarouselOpen(false)}
+          />
+        )}
+
+        {__DEV__ && (
+          <DevPanel userCoords={userCoords} onToast={setToastMsg} />
+        )}
       </View>
-
-      <StatusFAB
-        onPress={handleFabPress}
-        isLive={myBroadcast !== null}
-      />
-
-      <ContextSheet
-        visible={contextSheetVisible}
-        onSelect={handleContextSelect}
-        onSkip={handleContextSkip}
-      />
-
-      {__DEV__ && (
-        <DevPanel userCoords={userCoords} onToast={setToastMsg} />
-      )}
 
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
     </View>
@@ -189,12 +190,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.bg,
   },
+  mapWrapper: {
+    flex: 1,
+    position: "relative",
+  },
   controlsOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 20,
+    paddingTop: 8,
+    zIndex: theme.z.controls,
   },
   topRow: {
     flexDirection: "row",
