@@ -12,9 +12,10 @@ import MapLibreGL, {
   Camera,
 } from "@maplibre/maplibre-react-native";
 import { supabase } from "../../lib/supabase";
-import { fetchActiveBroadcasts } from "../../lib/queries";
+import { fetchActiveBroadcastsWithJoins, computeMoments } from "../../lib/queries";
 import { BroadcastMarker } from "./BroadcastMarker";
-import type { StatusBroadcast } from "../../types";
+import { MomentClusterMarker } from "./MomentClusterMarker";
+import type { StatusBroadcast, Moment } from "../../types";
 
 MapLibreGL.setAccessToken(null);
 
@@ -36,7 +37,8 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     { initialCenter, initialZoom, onMapPress, onMarkerPress },
     ref
   ) {
-    const [broadcasts, setBroadcasts] = useState<StatusBroadcast[]>([]);
+    const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
+    const [moments, setMoments] = useState<Moment[]>([]);
     const cameraRef = useRef<CameraRef>(null);
 
     useImperativeHandle(ref, () => ({
@@ -52,8 +54,10 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
 
     const loadBroadcasts = useCallback(async () => {
       try {
-        const b = await fetchActiveBroadcasts();
-        setBroadcasts(b);
+        const broadcasts = await fetchActiveBroadcastsWithJoins();
+        const { moments: m, soloBroadcasts: solo } = computeMoments(broadcasts);
+        setMoments(m);
+        setSoloBroadcasts(solo);
       } catch (err) {
         console.warn("Error loading broadcasts:", err);
       }
@@ -101,7 +105,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
           }}
         />
 
-        {broadcasts
+        {soloBroadcasts
           .filter((b) => b.lat != null && b.lng != null)
           .map((b) => (
             <BroadcastMarker
@@ -110,6 +114,14 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
               onPress={handleMarkerPress}
             />
           ))}
+
+        {moments.map((m) => (
+          <MomentClusterMarker
+            key={m.id}
+            moment={m}
+            onPress={() => {}}
+          />
+        ))}
       </MapView>
     );
   }

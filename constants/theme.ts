@@ -19,6 +19,8 @@ export const theme = {
   errorTint: "rgba(217,48,37,0.08)",
   greenTint: "rgba(56,160,122,0.08)",
   greenBorder: "rgba(56,160,122,0.25)",
+  warmTint: "rgba(224,138,60,0.08)",
+  warmBorder: "rgba(224,138,60,0.25)",
   surfaceElevated: "#FEFEFE",
 
   heat: {
@@ -67,6 +69,7 @@ export const theme = {
     toast: "0px 4px 16px rgba(26,27,30,0.10), 0px 1px 4px rgba(26,27,30,0.06)",
     tab: "0px -1px 3px rgba(26,27,30,0.03), 0px -4px 12px rgba(26,27,30,0.02)",
     joinBtn: "0px 1px 4px rgba(240,77,44,0.25), 0px 3px 10px rgba(240,77,44,0.12)",
+    cardMoment: "0px 1px 4px rgba(224,138,60,0.06), 0px 6px 16px rgba(26,27,30,0.04)",
   },
 
   /* ── Z-index layers ──────────────────────────────────────────────── */

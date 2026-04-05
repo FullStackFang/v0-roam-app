@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { distance, point } from "@turf/turf";
 import type {
   Profile,
   StatusBroadcast,
@@ -6,7 +7,9 @@ import type {
   BroadcastDuration,
   FeedItem,
   FeedBucket,
+  Moment,
 } from "../types";
+import { CLUSTERABLE_STATUS_TYPES } from "../types";
 
 // ── Profile Queries ───────────────────────────────────────
 
@@ -268,6 +271,126 @@ export async function leaveBroadcast(broadcastId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Moment Computation ───────────────────────────────────
+
+const MOMENT_RADIUS_KM = 0.5;
+
+function clusterByProximity(broadcasts: StatusBroadcast[], radiusKm: number): StatusBroadcast[][] {
+  const n = broadcasts.length;
+  if (n < 2) return [broadcasts];
+
+  const parent = Array.from({ length: n }, (_, i) => i);
+
+  function find(x: number): number {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  }
+
+  function union(a: number, b: number): void {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  }
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const d = distance(
+        point([broadcasts[i].lng!, broadcasts[i].lat!]),
+        point([broadcasts[j].lng!, broadcasts[j].lat!]),
+        { units: "kilometers" }
+      );
+      if (d <= radiusKm) union(i, j);
+    }
+  }
+
+  const clusterMap = new Map<number, StatusBroadcast[]>();
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    const arr = clusterMap.get(root) ?? [];
+    arr.push(broadcasts[i]);
+    clusterMap.set(root, arr);
+  }
+
+  return Array.from(clusterMap.values());
+}
+
+export function computeMoments(broadcasts: StatusBroadcast[]): {
+  moments: Moment[];
+  soloBroadcasts: StatusBroadcast[];
+} {
+  const clusterable = broadcasts.filter(
+    (b) => b.lat != null && b.lng != null && CLUSTERABLE_STATUS_TYPES.includes(b.status_type)
+  );
+  const nonClusterable = broadcasts.filter(
+    (b) => b.lat == null || b.lng == null || !CLUSTERABLE_STATUS_TYPES.includes(b.status_type)
+  );
+
+  const groups = new Map<StatusType, StatusBroadcast[]>();
+  for (const b of clusterable) {
+    const existing = groups.get(b.status_type) ?? [];
+    existing.push(b);
+    groups.set(b.status_type, existing);
+  }
+
+  const moments: Moment[] = [];
+  const clusteredIds = new Set<string>();
+
+  for (const [statusType, group] of groups) {
+    const clusters = clusterByProximity(group, MOMENT_RADIUS_KM);
+
+    for (const cluster of clusters) {
+      if (cluster.length < 2) continue;
+
+      const allProfiles: Profile[] = [];
+      let participantCount = 0;
+      let latestActivity = cluster[0].created_at;
+
+      for (const b of cluster) {
+        if (b.profile) allProfiles.push(b.profile);
+        participantCount += 1;
+        for (const j of (b.joins ?? [])) {
+          participantCount += 1;
+          if (j.profile && j.user_id !== b.user_id) allProfiles.push(j.profile);
+          if (j.created_at > latestActivity) latestActivity = j.created_at;
+        }
+        if (b.created_at > latestActivity) latestActivity = b.created_at;
+        clusteredIds.add(b.id);
+      }
+
+      const uniqueProfiles = Array.from(
+        new Map(allProfiles.map((p) => [p.id, p])).values()
+      );
+
+      const sortedIds = cluster.map((b) => b.id).sort();
+
+      moments.push({
+        id: `moment-${sortedIds.join("-")}`,
+        status_type: statusType,
+        broadcasts: cluster,
+        lat: cluster.reduce((s, b) => s + b.lat!, 0) / cluster.length,
+        lng: cluster.reduce((s, b) => s + b.lng!, 0) / cluster.length,
+        participant_count: participantCount,
+        all_profiles: uniqueProfiles,
+        earliest_expiry: cluster.reduce(
+          (min, b) => (b.expires_at < min ? b.expires_at : min),
+          cluster[0].expires_at
+        ),
+        latest_activity: latestActivity,
+      });
+    }
+  }
+
+  const soloBroadcasts = [
+    ...nonClusterable,
+    ...clusterable.filter((b) => !clusteredIds.has(b.id)),
+  ];
+
+  return { moments, soloBroadcasts };
+}
+
 // ── Feed ──────────────────────────────────────────────────
 
 const BUCKET_ORDER: FeedBucket[] = ["happening_now", "later_today", "tonight"];
@@ -276,7 +399,6 @@ function assignBucket(b: StatusBroadcast): FeedBucket {
   const msLeft = new Date(b.expires_at).getTime() - Date.now();
   const twoHours = 2 * 60 * 60 * 1000;
 
-  // Anything expiring within 2 hours is happening now
   if (msLeft <= twoHours) return "happening_now";
 
   switch (b.duration) {
@@ -296,22 +418,33 @@ function assignBucket(b: StatusBroadcast): FeedBucket {
 
 export async function fetchFeedData(): Promise<FeedItem[]> {
   const broadcasts = await fetchActiveBroadcastsWithJoins();
+  const { moments, soloBroadcasts } = computeMoments(broadcasts);
 
-  const items: FeedItem[] = broadcasts.map((b) => ({
-    type: "broadcast" as const,
-    data: b,
-    bucket: assignBucket(b),
-  }));
+  const items: FeedItem[] = [];
 
-  // Sort: bucket priority, then join_count desc, then created_at desc
+  for (const b of soloBroadcasts) {
+    items.push({ type: "broadcast" as const, data: b, bucket: assignBucket(b) });
+  }
+
+  for (const m of moments) {
+    const representative = m.broadcasts.reduce((a, b) =>
+      new Date(a.expires_at).getTime() < new Date(b.expires_at).getTime() ? a : b
+    );
+    items.push({ type: "moment" as const, data: m, bucket: assignBucket(representative) });
+  }
+
   items.sort((a, z) => {
     const bucketDiff = BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(z.bucket);
     if (bucketDiff !== 0) return bucketDiff;
 
-    const joinDiff = (z.data.join_count ?? 0) - (a.data.join_count ?? 0);
-    if (joinDiff !== 0) return joinDiff;
+    const aCount = a.type === "moment" ? a.data.participant_count : ((a.data as StatusBroadcast).join_count ?? 0) + 1;
+    const zCount = z.type === "moment" ? z.data.participant_count : ((z.data as StatusBroadcast).join_count ?? 0) + 1;
+    const countDiff = zCount - aCount;
+    if (countDiff !== 0) return countDiff;
 
-    return new Date(z.data.created_at).getTime() - new Date(a.data.created_at).getTime();
+    const aTime = a.type === "moment" ? a.data.latest_activity : (a.data as StatusBroadcast).created_at;
+    const zTime = z.type === "moment" ? z.data.latest_activity : (z.data as StatusBroadcast).created_at;
+    return new Date(zTime).getTime() - new Date(aTime).getTime();
   });
 
   return items;

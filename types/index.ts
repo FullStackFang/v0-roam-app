@@ -76,6 +76,24 @@ export const AVAILABILITY_OPTIONS: { duration: BroadcastDuration; emoji: string;
   { duration: "tonight", emoji: "\ud83c\udf19", label: "Out tonight" },
 ];
 
+// ── Moment Types ─────────────────────────────────────────
+
+export const CLUSTERABLE_STATUS_TYPES: StatusType[] = [
+  "up_for_drinks", "up_for_dinner", "grabbing_coffee", "walk", "open",
+];
+
+export interface Moment {
+  id: string;
+  status_type: StatusType;
+  broadcasts: StatusBroadcast[];
+  lat: number;
+  lng: number;
+  participant_count: number;
+  all_profiles: Profile[];
+  earliest_expiry: string;
+  latest_activity: string;
+}
+
 // ── Feed Types ────────────────────────────────────────────
 
 export type FeedBucket = "happening_now" | "later_today" | "tonight";
@@ -86,4 +104,6 @@ export const BUCKET_LABELS: Record<FeedBucket, string> = {
   tonight: "Tonight",
 };
 
-export type FeedItem = { type: "broadcast"; data: StatusBroadcast; bucket: FeedBucket };
+export type FeedItem =
+  | { type: "broadcast"; data: StatusBroadcast; bucket: FeedBucket }
+  | { type: "moment"; data: Moment; bucket: FeedBucket };
