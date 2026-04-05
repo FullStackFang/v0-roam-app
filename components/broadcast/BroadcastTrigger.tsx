@@ -7,6 +7,7 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
+  cancelAnimation,
   FadeInDown,
   FadeOutDown,
   FadeIn,
@@ -35,6 +36,7 @@ export function BroadcastTrigger({
 
   // Pulsing white dot on the "I'm out" trigger
   useEffect(() => {
+    if (!visible) return;
     pulseOpacity.value = withRepeat(
       withSequence(
         withTiming(0.45, { duration: 700 }),
@@ -43,7 +45,8 @@ export function BroadcastTrigger({
       -1,
       true
     );
-  }, []);
+    return () => cancelAnimation(pulseOpacity);
+  }, [visible]);
 
   // Pulsing green dot on live pill
   useEffect(() => {
@@ -57,6 +60,7 @@ export function BroadcastTrigger({
         false
       );
     }
+    return () => cancelAnimation(liveDotOpacity);
   }, [isLive]);
 
   const triggerScaleStyle = useAnimatedStyle(() => ({
@@ -161,12 +165,12 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#FFFCFA",
+    backgroundColor: theme.warmWhite,
   },
   triggerLabel: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 17,
-    color: "#FFFCFA",
+    color: theme.warmWhite,
     letterSpacing: 0.2,
   },
 

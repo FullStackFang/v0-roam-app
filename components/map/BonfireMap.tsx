@@ -77,6 +77,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
         .subscribe();
 
       return () => {
+        debouncedLoad.cancel();
         supabase.removeChannel(channel);
       };
     }, [debouncedLoad]);

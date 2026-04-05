@@ -20,11 +20,11 @@ export function JoinButton({ joined, loading, onPress }: JoinButtonProps) {
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    scale.value = withSpring(0.92, { damping: 20, stiffness: 300 });
+    scale.value = withSpring(0.92, theme.spring.snappy);
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(1, theme.spring.bouncy);
   };
 
   return (
@@ -37,7 +37,7 @@ export function JoinButton({ joined, loading, onPress }: JoinButtonProps) {
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator size={14} color={joined ? theme.accent : "#FFFCFA"} />
+          <ActivityIndicator size={14} color={joined ? theme.accent : theme.warmWhite} />
         ) : joined ? (
           <>
             <Check size={14} color={theme.accent} strokeWidth={2.5} />
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   defaultText: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 13,
-    color: "#FFFCFA",
+    color: theme.warmWhite,
   },
   joinedText: {
     fontFamily: theme.fonts.sansSemiBold,

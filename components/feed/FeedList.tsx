@@ -3,7 +3,7 @@ import { SectionList, RefreshControl, StyleSheet } from "react-native";
 import { FeedCard } from "./FeedCard";
 import { BucketHeader } from "./BucketHeader";
 import { FeedEmpty, FeedError, FeedSkeleton } from "./FeedEmpty";
-import { fetchFeedData } from "../../lib/queries";
+import { fetchFeedData, BUCKET_ORDER } from "../../lib/queries";
 import { supabase } from "../../lib/supabase";
 import { debounce } from "../../lib/debounce";
 import { theme } from "../../constants/theme";
@@ -16,7 +16,7 @@ interface FeedSection {
 }
 
 function groupByBucket(items: FeedItem[]): FeedSection[] {
-  const buckets: FeedBucket[] = ["happening_now", "later_today", "tonight"];
+  const buckets = BUCKET_ORDER;
   const sections: FeedSection[] = [];
 
   for (const bucket of buckets) {
@@ -57,17 +57,13 @@ export function FeedList() {
 
     loadData();
 
-    const broadcastChannel = supabase
-      .channel("feed-broadcasts")
+    const channel = supabase
+      .channel("feed-realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "status_broadcasts" },
         () => debouncedLoad()
       )
-      .subscribe();
-
-    const joinChannel = supabase
-      .channel("feed-joins")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "broadcast_joins" },
@@ -76,8 +72,8 @@ export function FeedList() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(broadcastChannel);
-      supabase.removeChannel(joinChannel);
+      debouncedLoad.cancel();
+      supabase.removeChannel(channel);
     };
   }, [loadData, debouncedLoad]);
 

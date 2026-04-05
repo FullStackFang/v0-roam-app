@@ -103,6 +103,7 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
 
   useEffect(() => {
     const id = setInterval(() => {
+      if (!broadcastsRef.current.length && !momentsRef.current.length) return;
       const elapsed = Date.now() - startTime.current;
       const shape = buildGeoJSON(broadcastsRef.current, momentsRef.current, elapsed, userIdRef.current);
       sourceRef.current?.setNativeProps({ shape });

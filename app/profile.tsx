@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontFamily: theme.fonts.sansBold,
     fontSize: 28,
-    color: "#FFFCFA",
+    color: theme.warmWhite,
   },
   fields: {
     paddingHorizontal: 24,

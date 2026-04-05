@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
   avatarInitial: {
     fontFamily: theme.fonts.sansSemiBold,
     fontSize: 14,
-    color: "#FFFCFA",
+    color: theme.warmWhite,
     letterSpacing: 0.2,
   },
   logo: {

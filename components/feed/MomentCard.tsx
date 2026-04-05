@@ -1,21 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, { FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
-import { Flame, ChevronDown, Wine, Coffee, Footprints, Sparkles } from "lucide-react-native";
+import { Flame, ChevronDown } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
-import { theme } from "../../constants/theme";
+import { theme, avatarColor } from "../../constants/theme";
+import { STATUS_ICONS } from "../../constants/statusIcons";
+import { formatTimeLeft } from "../../lib/formatTime";
+import { useJoinToggle } from "../../hooks/useJoinToggle";
 import { AvatarStack } from "./AvatarStack";
 import { JoinButton } from "./JoinButton";
-import { joinBroadcast, leaveBroadcast } from "../../lib/queries";
-import { STATUS_LABELS, type Moment, type StatusType, type StatusBroadcast } from "../../types";
-
-const STATUS_ICONS: Partial<Record<StatusType, React.ElementType>> = {
-  up_for_drinks: Wine,
-  up_for_dinner: Wine,
-  grabbing_coffee: Coffee,
-  walk: Footprints,
-  open: Sparkles,
-};
+import { STATUS_LABELS, type Moment, type StatusBroadcast } from "../../types";
 
 interface MomentCardProps {
   moment: Moment;
@@ -33,14 +27,7 @@ export function MomentCard({ moment, currentUserId }: MomentCardProps) {
   const label = STATUS_LABELS[moment.status_type];
   const ContextIcon = STATUS_ICONS[moment.status_type];
 
-  const remaining = Math.max(
-    0,
-    Math.round((new Date(moment.earliest_expiry).getTime() - Date.now()) / 60000)
-  );
-  const timeLeft =
-    remaining < 60
-      ? `${remaining} min left`
-      : `${Math.floor(remaining / 60)}h ${remaining % 60}m left`;
+  const timeLeft = formatTimeLeft(moment.earliest_expiry);
 
   return (
     <Animated.View
@@ -54,10 +41,10 @@ export function MomentCard({ moment, currentUserId }: MomentCardProps) {
           setExpanded(!expanded);
         }}
         onPressIn={() => {
-          scale.value = withSpring(0.975, { damping: 20, stiffness: 300 });
+          scale.value = withSpring(0.975, theme.spring.snappy);
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+          scale.value = withSpring(1, theme.spring.bouncy);
         }}
       >
         {/* Header */}
@@ -123,38 +110,22 @@ function MomentBroadcastRow({
   broadcast: StatusBroadcast;
   currentUserId: string | null;
 }) {
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [optimisticJoined, setOptimisticJoined] = useState<boolean | null>(null);
-
   const isMine = currentUserId === broadcast.user_id;
   const joins = broadcast.joins ?? [];
-  const hasJoined = optimisticJoined ?? joins.some((j) => j.user_id === currentUserId);
-
-  const handleJoinToggle = useCallback(async () => {
-    if (!currentUserId || isMine) return;
-    setJoinLoading(true);
-    const willJoin = !hasJoined;
-    setOptimisticJoined(willJoin);
-    try {
-      if (willJoin) {
-        await joinBroadcast(broadcast.id);
-      } else {
-        await leaveBroadcast(broadcast.id);
-      }
-    } catch {
-      setOptimisticJoined(null);
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [currentUserId, isMine, hasJoined, broadcast.id]);
+  const { hasJoined, joinLoading, joinCount, handleJoinToggle } = useJoinToggle(
+    broadcast.id,
+    currentUserId,
+    isMine,
+    joins,
+    broadcast.join_count ?? 0
+  );
 
   const name = broadcast.profile?.display_name?.split(" ")[0] ?? "Someone";
-  const joinCount = (broadcast.join_count ?? 0) + (optimisticJoined === true ? 1 : optimisticJoined === false ? -1 : 0);
 
   return (
     <View style={styles.broadcastRow}>
       <View style={styles.broadcastRowLeft}>
-        <View style={[styles.miniAvatar, { backgroundColor: theme.avatars[0] }]}>
+        <View style={[styles.miniAvatar, { backgroundColor: avatarColor(broadcast.user_id) }]}>
           <Text style={styles.miniAvatarText}>
             {broadcast.profile?.display_name?.charAt(0).toUpperCase() ?? "?"}
           </Text>

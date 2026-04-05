@@ -1,10 +1,14 @@
+export type Debounced<T extends (...args: any[]) => any> = T & { cancel: () => void };
+
 export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   delayMs: number
-): T {
+): Debounced<T> {
   let timer: ReturnType<typeof setTimeout>;
-  return ((...args: any[]) => {
+  const debounced = ((...args: any[]) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), delayMs);
-  }) as unknown as T;
+  }) as Debounced<T>;
+  debounced.cancel = () => clearTimeout(timer);
+  return debounced;
 }

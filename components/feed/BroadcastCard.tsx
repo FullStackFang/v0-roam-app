@@ -1,21 +1,16 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
-import { Radio, Wine, Coffee, Footprints, Sparkles, Users } from "lucide-react-native";
+import { Radio, Users } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
+import { STATUS_ICONS } from "../../constants/statusIcons";
+import { formatTimeLeft } from "../../lib/formatTime";
+import { useJoinToggle } from "../../hooks/useJoinToggle";
 import { AvatarStack } from "./AvatarStack";
 import { JoinButton } from "./JoinButton";
 import { SocialProofLine } from "./SocialProofLine";
-import { joinBroadcast, leaveBroadcast } from "../../lib/queries";
-import { STATUS_LABELS, type StatusBroadcast, type StatusType, type Profile } from "../../types";
-
-const STATUS_ICONS: Partial<Record<StatusType, React.ElementType>> = {
-  up_for_drinks: Wine,
-  grabbing_coffee: Coffee,
-  walk: Footprints,
-  open: Sparkles,
-};
+import { STATUS_LABELS, type StatusBroadcast, type Profile } from "../../types";
 
 interface BroadcastCardProps {
   broadcast: StatusBroadcast;
@@ -24,8 +19,6 @@ interface BroadcastCardProps {
 
 export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) {
   const scale = useSharedValue(1);
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [optimisticJoined, setOptimisticJoined] = useState<boolean | null>(null);
 
   const animatedScale = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -33,10 +26,13 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
 
   const isMine = currentUserId === broadcast.user_id;
   const joins = broadcast.joins ?? [];
-  const joinCount = optimisticJoined !== null
-    ? (broadcast.join_count ?? 0) + (optimisticJoined ? 1 : -1)
-    : (broadcast.join_count ?? 0);
-  const hasJoined = optimisticJoined ?? joins.some((j) => j.user_id === currentUserId);
+  const { hasJoined, joinLoading, joinCount, handleJoinToggle } = useJoinToggle(
+    broadcast.id,
+    currentUserId,
+    isMine,
+    joins,
+    broadcast.join_count ?? 0
+  );
   const isForming = joinCount > 0;
 
   const label =
@@ -44,17 +40,7 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
       ? broadcast.custom_text ?? "Available"
       : STATUS_LABELS[broadcast.status_type];
 
-  const remaining = Math.max(
-    0,
-    Math.round(
-      (new Date(broadcast.expires_at).getTime() - Date.now()) / 60000
-    )
-  );
-  const timeLeft =
-    remaining < 60
-      ? `${remaining} min left`
-      : `${Math.floor(remaining / 60)}h ${remaining % 60}m left`;
-
+  const timeLeft = formatTimeLeft(broadcast.expires_at);
   const ContextIcon = STATUS_ICONS[broadcast.status_type];
 
   const allProfiles: Profile[] = [];
@@ -65,28 +51,6 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
     }
   }
 
-  const handleJoinToggle = useCallback(async () => {
-    if (!currentUserId || isMine) return;
-    setJoinLoading(true);
-    const willJoin = !hasJoined;
-    setOptimisticJoined(willJoin);
-    try {
-      if (willJoin) {
-        await joinBroadcast(broadcast.id);
-      } else {
-        await leaveBroadcast(broadcast.id);
-      }
-    } catch {
-      setOptimisticJoined(null);
-    } finally {
-      setJoinLoading(false);
-    }
-  }, [currentUserId, isMine, hasJoined, broadcast.id]);
-
-  useEffect(() => {
-    setOptimisticJoined(null);
-  }, [broadcast.joins?.length]);
-
   return (
     <Animated.View
       entering={FadeInUp.springify().damping(20).stiffness(200).duration(350)}
@@ -96,10 +60,10 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
         style={[styles.container, isForming && styles.containerForming]}
         onPressIn={() => {
           Haptics.selectionAsync();
-          scale.value = withSpring(0.975, { damping: 20, stiffness: 300 });
+          scale.value = withSpring(0.975, theme.spring.snappy);
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+          scale.value = withSpring(1, theme.spring.bouncy);
         }}
       >
         <View style={styles.header}>

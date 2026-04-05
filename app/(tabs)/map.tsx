@@ -39,27 +39,34 @@ export default function MapScreen() {
   const mapRef = useRef<BonfireMapHandle>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      setCurrentUserId(user.id);
-      fetchProfile(user.id).then(setMyProfile);
-    });
-
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") return;
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const coords: [number, number] = [
-        loc.coords.longitude,
-        loc.coords.latitude,
-      ];
-      setUserCoords(coords);
-      updateLastKnownLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
-    })();
+      const [{ data: { user } }, locationResult] = await Promise.all([
+        supabase.auth.getUser(),
+        Location.requestForegroundPermissionsAsync().then(async ({ status }) => {
+          if (status !== "granted") return null;
+          return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        }),
+      ]);
 
-    fetchMyActiveBroadcast().then(setMyBroadcast);
+      if (locationResult) {
+        const coords: [number, number] = [
+          locationResult.coords.longitude,
+          locationResult.coords.latitude,
+        ];
+        setUserCoords(coords);
+        updateLastKnownLocation(locationResult.coords.latitude, locationResult.coords.longitude).catch(() => {});
+      }
+
+      if (user) {
+        setCurrentUserId(user.id);
+        const [profile, broadcast] = await Promise.all([
+          fetchProfile(user.id),
+          fetchMyActiveBroadcast(),
+        ]);
+        setMyProfile(profile);
+        setMyBroadcast(broadcast);
+      }
+    })();
 
     const unsubFire = onFirePress(() => {
       setCarouselOpen(true);

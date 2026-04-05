@@ -4,14 +4,20 @@ import Animated, { FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withS
 import { Wine, Coffee, Footprints, Sparkles } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
-import type { StatusType } from "../../types";
+import { CONTEXT_OPTIONS, type StatusType } from "../../types";
 
-const CONTEXT_PILLS: { type: StatusType; label: string; Icon: React.ElementType }[] = [
-  { type: "up_for_drinks", label: "Drinks", Icon: Wine },
-  { type: "grabbing_coffee", label: "Coffee", Icon: Coffee },
-  { type: "walk", label: "Walk", Icon: Footprints },
-  { type: "open", label: "Open", Icon: Sparkles },
-];
+const ICON_MAP: Partial<Record<StatusType, React.ElementType>> = {
+  up_for_drinks: Wine,
+  grabbing_coffee: Coffee,
+  walk: Footprints,
+  open: Sparkles,
+};
+
+const CONTEXT_PILLS = CONTEXT_OPTIONS.map((opt) => ({
+  type: opt.type,
+  label: opt.label,
+  Icon: ICON_MAP[opt.type]!,
+}));
 
 interface ContextSheetProps {
   visible: boolean;
@@ -82,10 +88,10 @@ function ContextPill({
         style={styles.pill}
         onPress={onPress}
         onPressIn={() => {
-          scale.value = withSpring(0.93, { damping: 20, stiffness: 300 });
+          scale.value = withSpring(0.93, theme.spring.snappy);
         }}
         onPressOut={() => {
-          scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+          scale.value = withSpring(1, theme.spring.bouncy);
         }}
       >
         <Icon size={20} color={theme.text} strokeWidth={1.5} />

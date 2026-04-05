@@ -15,6 +15,7 @@ export const theme = {
   warm: "#E08A3C",
   cool: "#4A9E9E",
   green: "#38A07A",
+  warmWhite: "#FFFCFA",
   error: "#D93025",
   errorTint: "rgba(217,48,37,0.08)",
   greenTint: "rgba(56,160,122,0.08)",

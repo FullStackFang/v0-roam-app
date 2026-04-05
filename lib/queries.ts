@@ -114,15 +114,9 @@ export async function goLive(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Delete any existing active broadcasts for this user
-  await supabase
-    .from("status_broadcasts")
-    .delete()
-    .eq("user_id", user.id)
-    .gt("expires_at", new Date().toISOString());
-
   const expiresAt = computeExpiresAt("1h");
 
+  // Insert new broadcast first to avoid an empty-state flash on the map
   const { data, error } = await supabase
     .from("status_broadcasts")
     .insert({
@@ -139,6 +133,15 @@ export async function goLive(
     .single();
 
   if (error) throw error;
+
+  // Clean up any previous active broadcasts (exclude the one just created)
+  await supabase
+    .from("status_broadcasts")
+    .delete()
+    .eq("user_id", user.id)
+    .neq("id", data.id)
+    .gt("expires_at", new Date().toISOString());
+
   return data;
 }
 
@@ -427,6 +430,10 @@ export function computeMoments(broadcasts: StatusBroadcast[]): {
 
 let _momentsCache: { key: string; result: ReturnType<typeof computeMoments> } | null = null;
 
+export function clearMomentsCache(): void {
+  _momentsCache = null;
+}
+
 export function computeMomentsCached(broadcasts: StatusBroadcast[]) {
   const key = broadcasts.map((b) => `${b.id}:${b.join_count ?? 0}`).join("|");
   if (_momentsCache && _momentsCache.key === key) return _momentsCache.result;
@@ -437,7 +444,7 @@ export function computeMomentsCached(broadcasts: StatusBroadcast[]) {
 
 // ── Feed ──────────────────────────────────────────────────
 
-const BUCKET_ORDER: FeedBucket[] = ["happening_now", "later_today", "tonight"];
+export const BUCKET_ORDER: FeedBucket[] = ["happening_now", "later_today", "tonight"];
 
 function assignBucket(b: StatusBroadcast): FeedBucket {
   const msLeft = new Date(b.expires_at).getTime() - Date.now();

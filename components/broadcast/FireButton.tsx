@@ -41,7 +41,7 @@ export function FireButton({ isLive, carouselOpen, onPress }: FireButtonProps) {
           }}
           hitSlop={16}
         >
-          <Flame size={28} color="#FFFCFA" strokeWidth={1.75} />
+          <Flame size={28} color={theme.warmWhite} strokeWidth={1.75} />
         </Pressable>
       </Animated.View>
     </View>

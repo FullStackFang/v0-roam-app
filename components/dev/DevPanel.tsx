@@ -90,8 +90,8 @@ function DevButton({ open, onPress }: { open: boolean; onPress: () => void }) {
       <Pressable
         style={[styles.fab, open && styles.fabOpen]}
         onPress={onPress}
-        onPressIn={() => { scale.value = withSpring(0.9, { damping: 20, stiffness: 300 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+        onPressIn={() => { scale.value = withSpring(0.9, theme.spring.snappy); }}
+        onPressOut={() => { scale.value = withSpring(1, theme.spring.bouncy); }}
       >
         {open ? (
           <X size={18} color={theme.muted} strokeWidth={2} />
@@ -127,8 +127,8 @@ function ActionRow({
         style={[styles.actionRow, loading && { opacity: 0.5 }]}
         onPress={onPress}
         disabled={loading}
-        onPressIn={() => { scale.value = withSpring(0.97, { damping: 20, stiffness: 300 }); }}
-        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 200 }); }}
+        onPressIn={() => { scale.value = withSpring(0.97, theme.spring.snappy); }}
+        onPressOut={() => { scale.value = withSpring(1, theme.spring.bouncy); }}
       >
         <Icon size={16} color={color} strokeWidth={1.75} />
         <Text style={styles.actionLabel}>{label}</Text>

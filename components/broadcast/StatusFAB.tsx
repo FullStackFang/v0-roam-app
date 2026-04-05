@@ -47,11 +47,11 @@ export function StatusFAB({ onPress, isLive, visible = true }: StatusFABProps) {
 
   const handlePressIn = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    scale.value = withSpring(0.92, { damping: 20, stiffness: 300 });
+    scale.value = withSpring(0.92, theme.spring.snappy);
   };
 
   const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    scale.value = withSpring(1, theme.spring.bouncy);
   };
 
   if (!visible) return null;
@@ -74,7 +74,7 @@ export function StatusFAB({ onPress, isLive, visible = true }: StatusFABProps) {
             <Text style={styles.liveText}>Live</Text>
           </View>
         ) : (
-          <Plus size={24} color="#FFFCFA" strokeWidth={2.5} />
+          <Plus size={24} color={theme.warmWhite} strokeWidth={2.5} />
         )}
       </Pressable>
     </Animated.View>

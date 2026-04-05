@@ -19,6 +19,7 @@ import {
 } from "@expo-google-fonts/dm-sans";
 import { supabase } from "../lib/supabase";
 import { registerForPushNotifications } from "../lib/notifications";
+import { clearMomentsCache } from "../lib/queries";
 import type { Session } from "@supabase/supabase-js";
 
 SplashScreen.preventAutoHideAsync();
@@ -50,6 +51,7 @@ export default function RootLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      clearMomentsCache();
       if (session && !pushRegistered.current) {
         pushRegistered.current = true;
         registerForPushNotifications().catch(() => {});

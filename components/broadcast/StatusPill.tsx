@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
@@ -14,6 +14,7 @@ import Animated, {
 import { Eye, EyeOff, XCircle } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
+import { formatTimeLeft } from "../../lib/formatTime";
 import {
   AVAILABILITY_OPTIONS,
   type StatusBroadcast,
@@ -25,14 +26,6 @@ interface StatusPillProps {
   onChangeAvailability: (duration: BroadcastDuration) => void;
   onToggleVisibility: () => void;
   onEndBroadcast: () => void;
-}
-
-function formatCountdown(expiresAt: string): string {
-  const ms = new Date(expiresAt).getTime() - Date.now();
-  if (ms <= 0) return "0m";
-  const min = Math.ceil(ms / 60000);
-  if (min < 60) return `${min}m`;
-  return `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
 function emojiForDuration(duration: BroadcastDuration): string {
@@ -51,13 +44,15 @@ export function StatusPill({
   onEndBroadcast,
 }: StatusPillProps) {
   const [countdown, setCountdown] = useState(() =>
-    formatCountdown(broadcast.expires_at)
+    formatTimeLeft(broadcast.expires_at, "short")
   );
   const [isOpen, setIsOpen] = useState(false);
   const expandAnim = useSharedValue(0);
 
   const [isUrgent, setIsUrgent] = useState(false);
   const pulseAnim = useSharedValue(1);
+  const onEndBroadcastRef = useRef(onEndBroadcast);
+  onEndBroadcastRef.current = onEndBroadcast;
 
   // Animated styles
   const pillHeightStyle = useAnimatedStyle(() => ({
@@ -77,16 +72,16 @@ export function StatusPill({
     const update = () => {
       const ms = new Date(broadcast.expires_at).getTime() - Date.now();
       if (ms <= 0) {
-        onEndBroadcast();
+        onEndBroadcastRef.current();
         return;
       }
-      setCountdown(formatCountdown(broadcast.expires_at));
+      setCountdown(formatTimeLeft(broadcast.expires_at, "short"));
       setIsUrgent(ms < 5 * 60 * 1000);
     };
     update();
     const id = setInterval(update, 15_000);
     return () => clearInterval(id);
-  }, [broadcast.expires_at, onEndBroadcast]);
+  }, [broadcast.expires_at]);
 
   // Breathing pulse for live dot
   useEffect(() => {
@@ -255,7 +250,7 @@ const styles = StyleSheet.create({
   } as any,
   pillOpen: {
     backgroundColor: "rgba(255,255,255,0.96)",
-    boxShadow: "0px 4px 16px rgba(26,27,30,0.10), 0px 1px 4px rgba(26,27,30,0.06)",
+    boxShadow: theme.shadow.toast,
   } as any,
   row: {
     flexDirection: "row",
