@@ -1,12 +1,13 @@
 import { supabase } from "./supabase";
 import type {
   Profile,
-  Venue,
   StatusBroadcast,
   StatusType,
   BroadcastDuration,
   FeedItem,
 } from "../types";
+
+// ── Profile Queries ───────────────────────────────────────
 
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
@@ -38,16 +39,38 @@ export async function upsertProfile(
   return data;
 }
 
-export async function fetchVenues(): Promise<Venue[]> {
-  const { data, error } = await supabase
-    .from("venues")
-    .select("id, name, neighborhood, category, lat, lng, created_at");
+// ── Broadcast Queries ─────────────────────────────────────
 
-  if (error) throw error;
-  return data ?? [];
+function computeExpiresAt(duration: BroadcastDuration): Date {
+  const now = new Date();
+
+  switch (duration) {
+    case "1h":
+      return new Date(now.getTime() + 60 * 60 * 1000);
+
+    case "today": {
+      const sixPm = new Date(now);
+      sixPm.setHours(18, 0, 0, 0);
+      // If already past 6pm, give 30 minutes
+      return sixPm.getTime() > now.getTime()
+        ? sixPm
+        : new Date(now.getTime() + 30 * 60 * 1000);
+    }
+
+    case "tonight":
+    case "until_2am": {
+      const twoAm = new Date(now);
+      twoAm.setHours(2, 0, 0, 0);
+      if (twoAm.getTime() <= now.getTime()) {
+        twoAm.setDate(twoAm.getDate() + 1);
+      }
+      return twoAm;
+    }
+
+    case "24h":
+      return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  }
 }
-
-// ── Broadcast Queries ────��────────────────────────────────
 
 export async function fetchActiveBroadcasts(): Promise<StatusBroadcast[]> {
   const { data, error } = await supabase
@@ -58,6 +81,96 @@ export async function fetchActiveBroadcasts(): Promise<StatusBroadcast[]> {
 
   if (error) throw error;
   return data ?? [];
+}
+
+export async function fetchMyActiveBroadcast(): Promise<StatusBroadcast | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("status_broadcasts")
+    .select("*, profile:profiles(*)")
+    .eq("user_id", user.id)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) return null;
+  return data;
+}
+
+export async function goLive(
+  location: { lat: number; lng: number }
+): Promise<StatusBroadcast> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Delete any existing active broadcasts for this user
+  await supabase
+    .from("status_broadcasts")
+    .delete()
+    .eq("user_id", user.id)
+    .gt("expires_at", new Date().toISOString());
+
+  const expiresAt = computeExpiresAt("1h");
+
+  const { data, error } = await supabase
+    .from("status_broadcasts")
+    .insert({
+      user_id: user.id,
+      status_type: "out_now",
+      custom_text: null,
+      duration: "1h",
+      expires_at: expiresAt.toISOString(),
+      location: `SRID=4326;POINT(${location.lng} ${location.lat})`,
+      lat: location.lat,
+      lng: location.lng,
+    })
+    .select("*, profile:profiles(*)")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateBroadcastContext(
+  broadcastId: string,
+  statusType: StatusType
+): Promise<void> {
+  const { error } = await supabase
+    .from("status_broadcasts")
+    .update({ status_type: statusType })
+    .eq("id", broadcastId);
+
+  if (error) throw error;
+}
+
+export async function updateBroadcastAvailability(
+  broadcastId: string,
+  duration: BroadcastDuration
+): Promise<void> {
+  const expiresAt = computeExpiresAt(duration);
+
+  const { error } = await supabase
+    .from("status_broadcasts")
+    .update({ duration, expires_at: expiresAt.toISOString() })
+    .eq("id", broadcastId);
+
+  if (error) throw error;
+}
+
+export async function endBroadcast(broadcastId: string): Promise<void> {
+  const { error } = await supabase
+    .from("status_broadcasts")
+    .delete()
+    .eq("id", broadcastId);
+
+  if (error) throw error;
 }
 
 export async function insertBroadcast(
@@ -71,20 +184,7 @@ export async function insertBroadcast(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  // Compute expires_at
-  const now = new Date();
-  let expiresAt: Date;
-  if (duration === "1h") {
-    expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
-  } else if (duration === "until_2am") {
-    expiresAt = new Date(now);
-    expiresAt.setHours(26, 0, 0, 0); // next 2am
-    if (expiresAt.getTime() <= now.getTime()) {
-      expiresAt.setDate(expiresAt.getDate() + 1);
-    }
-  } else {
-    expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  }
+  const expiresAt = computeExpiresAt(duration);
 
   const row: Record<string, unknown> = {
     user_id: user.id,
@@ -96,6 +196,8 @@ export async function insertBroadcast(
 
   if (location) {
     row.location = `SRID=4326;POINT(${location.lng} ${location.lat})`;
+    row.lat = location.lat;
+    row.lng = location.lng;
   }
 
   const { data, error } = await supabase
@@ -106,6 +208,16 @@ export async function insertBroadcast(
 
   if (error) throw error;
   return data;
+}
+
+export async function fetchActiveBroadcastCount(): Promise<number> {
+  const { count, error } = await supabase
+    .from("status_broadcasts")
+    .select("id", { count: "exact", head: true })
+    .gt("expires_at", new Date().toISOString());
+
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // ── Feed ──────────────────────────────────────────────────

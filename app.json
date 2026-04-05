@@ -1,15 +1,15 @@
 {
   "expo": {
     "name": "Bonfire",
-    "slug": "bonfire",
+    "slug": "roam",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/bonfire-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "bonfire",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/bonfire-splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#F5F3EF"
     },
@@ -22,7 +22,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/bonfire-adaptive-icon.png",
         "backgroundColor": "#F5F3EF"
       },
       "edgeToEdgeEnabled": true,
@@ -35,7 +35,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/bonfire-favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -43,7 +43,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png"
+          "icon": "./assets/bonfire-icon.png"
         }
       ],
       "expo-font"

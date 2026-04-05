@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { theme } from "../../constants/theme";
+import { theme, avatarColor } from "../../constants/theme";
 import type { Profile } from "../../types";
 
 interface AvatarStackProps {
@@ -25,6 +25,7 @@ export function AvatarStack({ profiles, totalCount, size = 24 }: AvatarStackProp
                 width: size,
                 height: size,
                 borderRadius: size / 2,
+                backgroundColor: avatarColor(p.id),
                 marginLeft: i > 0 ? -size * 0.25 : 0,
                 zIndex: shown.length - i,
               },
@@ -37,7 +38,9 @@ export function AvatarStack({ profiles, totalCount, size = 24 }: AvatarStackProp
         ))}
       </View>
       {shown.length === 1 && (
-        <Text style={styles.name}>{profiles[0].display_name}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {profiles[0].display_name}
+        </Text>
       )}
       {shown.length > 1 && extra > 0 && (
         <Text style={styles.extra}>+{extra}</Text>
@@ -56,20 +59,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   avatar: {
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: theme.surface,
-    backgroundColor: "rgba(0,0,0,0.06)",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    fontFamily: theme.fonts.sansMedium,
-    color: theme.muted,
+    fontWeight: "600",
+    color: "#fff",
   },
   name: {
     fontFamily: theme.fonts.sansMedium,
     fontSize: 13,
     color: theme.text,
+    maxWidth: 120,
   },
   extra: {
     fontFamily: theme.fonts.sansMedium,

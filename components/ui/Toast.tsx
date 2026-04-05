@@ -1,54 +1,45 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Text, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
+
+type ToastVariant = "info" | "success" | "error";
 
 interface ToastProps {
   message: string | null;
+  variant?: ToastVariant;
   onHide: () => void;
 }
 
-export function Toast({ message, onHide }: ToastProps) {
+const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string }> = {
+  info: { bg: "rgba(255,255,255,0.96)", border: theme.border },
+  success: { bg: "rgba(59,170,130,0.08)", border: "rgba(59,170,130,0.20)" },
+  error: { bg: theme.errorTint, border: "rgba(217,48,37,0.20)" },
+};
+
+export function Toast({ message, variant = "info", onHide }: ToastProps) {
+  const insets = useSafeAreaInsets();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(-12)).current;
   const scale = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     if (message) {
-      // Spring entrance — feels physical, not robotic
       Animated.parallel([
-        Animated.spring(opacity, {
-          toValue: 1,
-          ...theme.spring.gentle,
-        }),
-        Animated.spring(translateY, {
-          toValue: 0,
-          ...theme.spring.gentle,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          ...theme.spring.gentle,
-        }),
+        Animated.spring(opacity, { toValue: 1, ...theme.spring.gentle }),
+        Animated.spring(translateY, { toValue: 0, ...theme.spring.gentle }),
+        Animated.spring(scale, { toValue: 1, ...theme.spring.gentle }),
       ]).start();
+
+      const duration = variant === "error" ? 3500 : 2600;
 
       const timer = setTimeout(() => {
         Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: -8,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 0.95,
-            duration: 200,
-            useNativeDriver: true,
-          }),
+          Animated.spring(opacity, { toValue: 0, ...theme.spring.snappy }),
+          Animated.spring(translateY, { toValue: -8, ...theme.spring.snappy }),
+          Animated.spring(scale, { toValue: 0.95, ...theme.spring.snappy }),
         ]).start(() => onHide());
-      }, 2600);
+      }, duration);
 
       return () => clearTimeout(timer);
     }
@@ -56,11 +47,19 @@ export function Toast({ message, onHide }: ToastProps) {
 
   if (!message) return null;
 
+  const v = VARIANT_STYLES[variant];
+
   return (
     <Animated.View
       style={[
         styles.container,
-        { opacity, transform: [{ translateY }, { scale }] },
+        {
+          top: insets.top + 60,
+          backgroundColor: v.bg,
+          borderColor: v.border,
+          opacity,
+          transform: [{ translateY }, { scale }],
+        },
       ]}
     >
       <Text style={styles.text}>{message}</Text>
@@ -71,16 +70,12 @@ export function Toast({ message, onHide }: ToastProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 118,
     alignSelf: "center",
-    zIndex: 50,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    zIndex: theme.z.toast,
     borderWidth: 1,
-    borderColor: theme.border,
     borderRadius: theme.radius.lg,
     paddingVertical: 10,
     paddingHorizontal: 20,
-    // Tinted shadow
     shadowColor: "#1A1B1E",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,

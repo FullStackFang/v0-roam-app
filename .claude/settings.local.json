@@ -73,5 +73,6 @@
       "Bash(git branch:*)",
       "Bash(git push:*)"
     ]
-  }
+  },
+  "outputStyle": "Explanatory"
 }

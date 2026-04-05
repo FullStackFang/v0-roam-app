@@ -2,16 +2,21 @@
 
 export const theme = {
   /* ── Palette ──────────────────────────────────────────────────────── */
-  bg: "#F5F3EF", // warm paper — replaces cold blue-grey
+  bg: "#F5F3EF",
   surface: "#FFFFFF",
-  surfaceGlass: "rgba(255,255,255,0.82)", // frosted overlays
+  surfaceGlass: "rgba(255,255,255,0.82)",
   border: "rgba(0,0,0,0.06)",
   text: "#1A1B1E",
   muted: "rgba(26,27,30,0.40)",
-  accent: "#F04D2C", // warm red-orange, slightly desaturated from #FF5C3A
+  accent: "#F04D2C",
+  accentFill: "rgba(240,77,44,0.12)",
+  accentTint: "rgba(240,77,44,0.08)",
+  accentBorder: "rgba(240,77,44,0.30)",
   warm: "#E08A3C",
   cool: "#4A9E9E",
   green: "#38A07A",
+  error: "#D93025",
+  errorTint: "rgba(217,48,37,0.08)",
 
   heat: {
     a: "#E84428",
@@ -22,13 +27,17 @@ export const theme = {
     f: "#5A9EB0",
   },
 
+  /* ── Avatar palette — deterministic per user ─────────────────────── */
+  avatars: [
+    "#E06850", "#D4922A", "#4A9E9E", "#38A07A",
+    "#7C6BB4", "#C75B8E", "#5A8FBD", "#E08A3C",
+  ] as string[],
+
   /* ── Typography ───────────────────────────────────────────────────── */
   fonts: {
-    // Serif — brand mark + venue headings
     serif: "PlayfairDisplay_500Medium",
     serifItalic: "PlayfairDisplay_500Medium_Italic",
     serifBold: "PlayfairDisplay_700Bold",
-    // Sans — UI + body
     sans: "DMSans_400Regular",
     sansMedium: "DMSans_500Medium",
     sansSemiBold: "DMSans_600SemiBold",
@@ -37,18 +46,38 @@ export const theme = {
 
   /* ── Radii ────────────────────────────────────────────────────────── */
   radius: {
+    xs: 4,
     sm: 8,
     md: 14,
     lg: 20,
     xl: 28,
   },
 
+  /* ── Z-index layers ──────────────────────────────────────────────── */
+  z: {
+    map: 1,
+    controls: 20,
+    fab: 25,
+    pill: 30,
+    sheet: 35,
+    toast: 50,
+  },
+
   /* ── Spring configs (for Animated.spring) ─────────────────────────── */
   spring: {
-    snappy: { damping: 20, stiffness: 300, useNativeDriver: true },
-    gentle: { damping: 25, stiffness: 150, useNativeDriver: true },
-    bouncy: { damping: 15, stiffness: 200, useNativeDriver: true },
+    snappy: { damping: 20, stiffness: 300, useNativeDriver: true },   // micro-interactions, press
+    gentle: { damping: 25, stiffness: 150, useNativeDriver: true },    // entrance, fade
+    bouncy: { damping: 15, stiffness: 200, useNativeDriver: true },    // release, overshoot
   },
 } as const;
+
+/** Pick a deterministic avatar color from a user ID */
+export function avatarColor(userId: string): string {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  }
+  return theme.avatars[Math.abs(hash) % theme.avatars.length];
+}
 
 export type Theme = typeof theme;

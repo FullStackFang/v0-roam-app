@@ -6,21 +6,16 @@ import React, {
   useImperativeHandle,
   forwardRef,
 } from "react";
-import { View, StyleSheet } from "react-native";
 import MapLibreGL, {
   type CameraRef,
   MapView,
   Camera,
 } from "@maplibre/maplibre-react-native";
-import { theme } from "../../constants/theme";
 import { supabase } from "../../lib/supabase";
-import {
-  fetchVenues,
-  fetchActiveBroadcasts,
-} from "../../lib/queries";
-import type { Venue, StatusBroadcast } from "../../types";
+import { fetchActiveBroadcasts } from "../../lib/queries";
+import { BroadcastMarker } from "./BroadcastMarker";
+import type { StatusBroadcast } from "../../types";
 
-// Initialize MapLibre
 MapLibreGL.setAccessToken(null);
 
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
@@ -33,15 +28,17 @@ interface BonfireMapProps {
   initialCenter: [number, number];
   initialZoom: number;
   onMapPress: () => void;
+  onMarkerPress?: (broadcast: StatusBroadcast) => void;
 }
 
 export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
-  function BonfireMap({ initialCenter, initialZoom, onMapPress }, ref) {
-    const [venues, setVenues] = useState<Venue[]>([]); // TODO: Phase 1 — remove if venues are no longer needed
+  function BonfireMap(
+    { initialCenter, initialZoom, onMapPress, onMarkerPress },
+    ref
+  ) {
     const [broadcasts, setBroadcasts] = useState<StatusBroadcast[]>([]);
     const cameraRef = useRef<CameraRef>(null);
 
-    // Expose flyTo to parent via ref
     useImperativeHandle(ref, () => ({
       flyTo: (center: [number, number], zoom: number) => {
         cameraRef.current?.setCamera({
@@ -53,68 +50,67 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
       },
     }));
 
-    const loadData = useCallback(async () => {
+    const loadBroadcasts = useCallback(async () => {
       try {
-        const [v, b] = await Promise.all([
-          fetchVenues(),
-          fetchActiveBroadcasts(),
-        ]);
-        setVenues(v);
+        const b = await fetchActiveBroadcasts();
         setBroadcasts(b);
       } catch (err) {
-        console.warn("Error loading map data:", err);
+        console.warn("Error loading broadcasts:", err);
       }
     }, []);
 
     useEffect(() => {
-      loadData();
-    }, [loadData]);
+      loadBroadcasts();
+    }, [loadBroadcasts]);
 
-    // Realtime subscription for broadcasts
     useEffect(() => {
-      const broadcastsChannel = supabase
+      const channel = supabase
         .channel("broadcasts-realtime")
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "status_broadcasts" },
-          () => loadData()
+          () => loadBroadcasts()
         )
         .subscribe();
 
       return () => {
-        supabase.removeChannel(broadcastsChannel);
+        supabase.removeChannel(channel);
       };
-    }, [loadData]);
+    }, [loadBroadcasts]);
 
-    // TODO: Phase 1 — add broadcast avatar markers with proper lat/lng
+    const handleMarkerPress = useCallback(
+      (broadcast: StatusBroadcast) => {
+        onMarkerPress?.(broadcast);
+      },
+      [onMarkerPress]
+    );
 
     return (
-      <View style={styles.container}>
-        <MapView
-          style={styles.map}
-          mapStyle={STYLE_URL}
-          onPress={onMapPress}
-          logoEnabled={false}
-          attributionEnabled={false}
-        >
-          <Camera
-            ref={cameraRef}
-            defaultSettings={{
-              centerCoordinate: initialCenter,
-              zoomLevel: initialZoom,
-            }}
-          />
-        </MapView>
-      </View>
+      <MapView
+        style={{ flex: 1 }}
+        mapStyle={STYLE_URL}
+        onPress={onMapPress}
+        logoEnabled={false}
+        attributionEnabled={false}
+      >
+        <Camera
+          ref={cameraRef}
+          defaultSettings={{
+            centerCoordinate: initialCenter,
+            zoomLevel: initialZoom,
+          }}
+        />
+
+        {broadcasts
+          .filter((b) => b.lat != null && b.lng != null)
+          .map((b) => (
+            <BroadcastMarker
+              key={b.id}
+              broadcast={b}
+              onPress={handleMarkerPress}
+            />
+          ))}
+      </MapView>
     );
   }
 );
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  map: {
-    flex: 1,
-  },
-});

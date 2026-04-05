@@ -23,6 +23,8 @@ eas build --profile production --platform android   # Production build
 
 Note: `.npmrc` sets `legacy-peer-deps=true` — use `npm install` (not pnpm).
 
+**Expo Go does NOT work** — MapLibre GL Native requires native code bundling. Always use a dev client build (`eas build --profile development`) to test on-device.
+
 ## Architecture
 
 **Expo Router** file-based routing in `app/`:
@@ -33,7 +35,7 @@ Note: `.npmrc` sets `legacy-peer-deps=true` — use `npm install` (not pnpm).
 
 **Data layer** in `lib/`:
 - `supabase.ts` — Client init with AsyncStorage persistence and auto-refresh
-- `queries.ts` — Supabase queries: `fetchProfile`, `upsertProfile`, `fetchVenues`, `fetchActiveBroadcasts`, `insertBroadcast`, `fetchFeedData`
+- `queries.ts` — Supabase queries: `fetchProfile`, `upsertProfile`, `fetchActiveBroadcasts`, `insertBroadcast`, `fetchActiveBroadcastCount`, `fetchFeedData`
 
 **Components** in `components/`:
 - `map/BonfireMap.tsx` — MapLibre GL map (OpenFreeMap positron tiles), real-time Supabase subscription on `status_broadcasts` table

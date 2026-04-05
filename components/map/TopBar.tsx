@@ -6,6 +6,8 @@ import {
   Animated,
   StyleSheet,
 } from "react-native";
+import * as Haptics from "expo-haptics";
+import { ChevronDown } from "lucide-react-native";
 import { theme } from "../../constants/theme";
 import type { City } from "../../constants/cities";
 
@@ -93,7 +95,7 @@ export function TopBar({
               <Text style={styles.cityText}>{activeCity.label}</Text>
               <Animated.View
                 style={{
-                  marginLeft: 4,
+                  marginLeft: 2,
                   transform: [
                     {
                       rotate: expandAnim.interpolate({
@@ -104,7 +106,7 @@ export function TopBar({
                   ],
                 }}
               >
-                <Text style={styles.chevron}>{">"}</Text>
+                <ChevronDown size={12} color={theme.muted} strokeWidth={2} />
               </Animated.View>
             </Pressable>
 
@@ -124,7 +126,10 @@ export function TopBar({
                   <Animated.View key={city.key} style={{ opacity: rowOpacity }}>
                     <Pressable
                       style={styles.dropdownRow}
-                      onPress={() => onSelect(city)}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        onSelect(city);
+                      }}
                     >
                       <Text style={styles.dropdownText}>{city.label}</Text>
                     </Pressable>
@@ -153,7 +158,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginTop: 6,
   },
-  // logoAccent style removed — clean wordmark, no accented letter
   pillAnchor: {
     position: "relative",
     zIndex: 1,
@@ -207,12 +211,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.2,
     color: theme.muted,
-  },
-  chevron: {
-    fontFamily: theme.fonts.sans,
-    fontSize: 9,
-    color: theme.muted,
-    transform: [{ rotate: "90deg" }],
   },
   dropdownRow: {
     flexDirection: "row",

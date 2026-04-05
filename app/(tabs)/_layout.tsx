@@ -1,14 +1,40 @@
 import React from "react";
-import { Platform, View } from "react-native";
+import { Platform, View, Pressable } from "react-native";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapPin, List } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import { theme } from "../../constants/theme";
+
+function FocusDot() {
+  return (
+    <View
+      style={{
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+        backgroundColor: theme.accent,
+        marginTop: 4,
+      }}
+    />
+  );
+}
+
+function HapticTab(props: any) {
+  return (
+    <Pressable
+      {...props}
+      onPress={(e) => {
+        Haptics.selectionAsync();
+        props.onPress?.(e);
+      }}
+    />
+  );
+}
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
 
-  // Ensure tab bar clears the Android navigation bar
   const tabBarHeight = 52 + Math.max(insets.bottom, Platform.OS === "android" ? 16 : 0);
 
   return (
@@ -16,6 +42,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
+        tabBarButton: HapticTab,
         tabBarStyle: {
           backgroundColor: theme.surface,
           borderTopWidth: 1,
@@ -26,7 +53,7 @@ export default function TabsLayout() {
           shadowOpacity: 0,
         },
         tabBarActiveTintColor: theme.accent,
-        tabBarInactiveTintColor: "rgba(26,27,30,0.20)",
+        tabBarInactiveTintColor: theme.muted,
         tabBarIconStyle: {
           marginTop: 4,
         },
@@ -41,19 +68,9 @@ export default function TabsLayout() {
                 size={22}
                 color={color}
                 strokeWidth={focused ? 2.25 : 1.5}
-                fill={focused ? "rgba(240,77,44,0.12)" : "none"}
+                fill={focused ? theme.accent : "none"}
               />
-              {focused && (
-                <View
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: theme.accent,
-                    marginTop: 4,
-                  }}
-                />
-              )}
+              {focused && <FocusDot />}
             </View>
           ),
         }}
@@ -68,17 +85,7 @@ export default function TabsLayout() {
                 color={color}
                 strokeWidth={focused ? 2.25 : 1.5}
               />
-              {focused && (
-                <View
-                  style={{
-                    width: 4,
-                    height: 4,
-                    borderRadius: 2,
-                    backgroundColor: theme.accent,
-                    marginTop: 4,
-                  }}
-                />
-              )}
+              {focused && <FocusDot />}
             </View>
           ),
         }}

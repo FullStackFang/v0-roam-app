@@ -23,9 +23,11 @@ export type StatusType =
   | "up_for_drinks"
   | "up_for_dinner"
   | "grabbing_coffee"
+  | "walk"
+  | "open"
   | "custom";
 
-export type BroadcastDuration = "1h" | "until_2am" | "24h";
+export type BroadcastDuration = "1h" | "until_2am" | "24h" | "today" | "tonight";
 
 export interface StatusBroadcast {
   id: string;
@@ -35,9 +37,34 @@ export interface StatusBroadcast {
   duration: BroadcastDuration;
   expires_at: string;
   location: unknown | null;
+  lat: number | null;
+  lng: number | null;
   created_at: string;
   profile?: Profile;
 }
+
+export const STATUS_LABELS: Record<StatusType, string> = {
+  out_now: "Out now",
+  up_for_drinks: "Drinks",
+  up_for_dinner: "Dinner",
+  grabbing_coffee: "Coffee",
+  walk: "Walk",
+  open: "Open",
+  custom: "",
+};
+
+export const CONTEXT_OPTIONS: { type: StatusType; emoji: string; label: string }[] = [
+  { type: "up_for_drinks", emoji: "\ud83c\udf77", label: "Drinks" },
+  { type: "grabbing_coffee", emoji: "\u2615", label: "Coffee" },
+  { type: "walk", emoji: "\ud83d\udeb6", label: "Walk" },
+  { type: "open", emoji: "\u2728", label: "Open" },
+];
+
+export const AVAILABILITY_OPTIONS: { duration: BroadcastDuration; emoji: string; label: string }[] = [
+  { duration: "1h", emoji: "\ud83d\udfe2", label: "Available now" },
+  { duration: "today", emoji: "\u2600\ufe0f", label: "Out today" },
+  { duration: "tonight", emoji: "\ud83c\udf19", label: "Out tonight" },
+];
 
 // ── Feed Types ────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ interface FeedCardProps {
   item: FeedItem;
 }
 
-export function FeedCard({ item }: FeedCardProps) {
+export function FeedCard({ item }: FeedCardProps): React.ReactElement {
   switch (item.type) {
     case "broadcast":
       return <BroadcastCard broadcast={item.data} />;

@@ -193,7 +193,6 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     marginBottom: 10,
   },
-  // logoAccent style removed — clean wordmark, no accented letter
   tagline: {
     fontFamily: theme.fonts.sans,
     fontSize: 16,
