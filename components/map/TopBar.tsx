@@ -1,11 +1,18 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useCallback } from "react";
 import {
   View,
   Text,
   Pressable,
-  Animated,
   StyleSheet,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+  Extrapolation,
+  type SharedValue,
+} from "react-native-reanimated";
 import * as Haptics from "../../lib/haptics";
 import { ChevronDown } from "lucide-react-native";
 import { theme } from "../../constants/theme";
@@ -29,39 +36,39 @@ export function TopBar({
   onToggle,
   onSelect,
 }: TopBarProps) {
-  const expandAnim = useRef(new Animated.Value(0)).current;
-  const pillScale = useRef(new Animated.Value(1)).current;
+  const expandAnim = useSharedValue(0);
+  const pillScale = useSharedValue(1);
 
   useEffect(() => {
-    Animated.spring(expandAnim, {
-      toValue: isOpen ? 1 : 0,
+    expandAnim.value = withSpring(isOpen ? 1 : 0, {
       damping: isOpen ? 22 : 20,
       stiffness: isOpen ? 180 : 280,
-      useNativeDriver: false,
-    }).start();
+    });
   }, [isOpen]);
 
   const handlePressIn = useCallback(() => {
-    Animated.spring(pillScale, {
-      toValue: 0.93,
-      ...theme.spring.snappy,
-    }).start();
+    pillScale.value = withSpring(0.93, theme.spring.snappy);
   }, []);
 
   const handlePressOut = useCallback(() => {
-    Animated.spring(pillScale, {
-      toValue: 1,
-      ...theme.spring.bouncy,
-    }).start();
+    pillScale.value = withSpring(1, theme.spring.bouncy);
   }, []);
 
   const closedHeight = ROW_HEIGHT + PILL_PADDING;
   const openHeight = ROW_HEIGHT * cities.length + PILL_PADDING + 4;
 
-  const animatedHeight = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [closedHeight, openHeight],
-  });
+  const scaleStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pillScale.value }],
+  }));
+
+  const heightStyle = useAnimatedStyle(() => ({
+    height: interpolate(expandAnim.value, [0, 1], [closedHeight, openHeight]),
+  }));
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    marginLeft: 2,
+    transform: [{ rotate: `${interpolate(expandAnim.value, [0, 1], [0, 180])}deg` }],
+  }));
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -77,11 +84,11 @@ export function TopBar({
           />
         )}
 
-        <Animated.View style={{ transform: [{ scale: pillScale }] }}>
+        <Animated.View style={scaleStyle}>
           <Animated.View
             style={[
               styles.cityPill,
-              { height: animatedHeight },
+              heightStyle,
               isOpen && styles.cityPillOpen,
             ]}
           >
@@ -93,53 +100,67 @@ export function TopBar({
             >
               <View style={styles.liveDot} />
               <Text style={styles.cityText}>{activeCity.label}</Text>
-              <Animated.View
-                style={{
-                  marginLeft: 2,
-                  transform: [
-                    {
-                      rotate: expandAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ["0deg", "180deg"],
-                      }),
-                    },
-                  ],
-                }}
-              >
+              <Animated.View style={chevronStyle}>
                 <ChevronDown size={12} color={theme.muted} strokeWidth={2} />
               </Animated.View>
             </Pressable>
 
             {cities
               .filter((c) => c.key !== activeCity.key)
-              .map((city, i) => {
-                const total = cities.length - 1;
-                const start = 0.2 + (i / total) * 0.3;
-                const end = Math.min(start + 0.4, 1);
-                const rowOpacity = expandAnim.interpolate({
-                  inputRange: [0, start, end],
-                  outputRange: [0, 0, 1],
-                  extrapolate: "clamp",
-                });
-
-                return (
-                  <Animated.View key={city.key} style={{ opacity: rowOpacity }}>
-                    <Pressable
-                      style={styles.dropdownRow}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        onSelect(city);
-                      }}
-                    >
-                      <Text style={styles.dropdownText}>{city.label}</Text>
-                    </Pressable>
-                  </Animated.View>
-                );
-              })}
+              .map((city, i) => (
+                <DropdownRow
+                  key={city.key}
+                  city={city}
+                  index={i}
+                  total={cities.length - 1}
+                  expandAnim={expandAnim}
+                  onSelect={onSelect}
+                />
+              ))}
           </Animated.View>
         </Animated.View>
       </View>
     </View>
+  );
+}
+
+function DropdownRow({
+  city,
+  index,
+  total,
+  expandAnim,
+  onSelect,
+}: {
+  city: City;
+  index: number;
+  total: number;
+  expandAnim: SharedValue<number>;
+  onSelect: (city: City) => void;
+}) {
+  const start = 0.2 + (index / total) * 0.3;
+  const end = Math.min(start + 0.4, 1);
+
+  const rowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      expandAnim.value,
+      [0, start, end],
+      [0, 0, 1],
+      Extrapolation.CLAMP
+    ),
+  }));
+
+  return (
+    <Animated.View style={rowStyle}>
+      <Pressable
+        style={styles.dropdownRow}
+        onPress={() => {
+          Haptics.selectionAsync();
+          onSelect(city);
+        }}
+      >
+        <Text style={styles.dropdownText}>{city.label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -47,6 +47,9 @@ export interface StatusBroadcast {
   location: unknown | null;
   lat: number | null;
   lng: number | null;
+  fuzzy_lat: number | null;
+  fuzzy_lng: number | null;
+  is_visible: boolean;
   created_at: string;
   profile?: Profile;
   joins?: BroadcastJoin[];

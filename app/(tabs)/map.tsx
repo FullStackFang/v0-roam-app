@@ -1,27 +1,25 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from "expo-location";
 import { BonfireMap, type BonfireMapHandle } from "../../components/map/BonfireMap";
-import { TopBar } from "../../components/map/TopBar";
 import { Toast } from "../../components/ui/Toast";
 import { StatusFAB } from "../../components/broadcast/StatusFAB";
 import { ContextSheet } from "../../components/broadcast/ContextSheet";
 import { StatusPill } from "../../components/broadcast/StatusPill";
 import { theme } from "../../constants/theme";
-import {
-  STATIC_CITIES,
-  buildCityList,
-  nearestCity,
-  type City,
-} from "../../constants/cities";
+import { STATIC_CITIES } from "../../constants/cities";
 import {
   goLive,
   fetchMyActiveBroadcast,
   updateBroadcastContext,
   updateBroadcastAvailability,
   endBroadcast,
+  toggleBroadcastVisibility,
 } from "../../lib/queries";
+import { updateLastKnownLocation, scheduleLiveReminder, cancelAllReminders } from "../../lib/notifications";
+import { supabase } from "../../lib/supabase";
+import { DevPanel } from "../../components/dev/DevPanel";
 import type { StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
 
 export default function MapScreen() {
@@ -29,18 +27,19 @@ export default function MapScreen() {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
-  const [city, setCity] = useState<City>(STATIC_CITIES[0]);
-  const [cityOpen, setCityOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Broadcast state
   const [myBroadcast, setMyBroadcast] = useState<StatusBroadcast | null>(null);
   const [contextSheetVisible, setContextSheetVisible] = useState(false);
   const [sending, setSending] = useState(false);
 
   const mapRef = useRef<BonfireMapHandle>(null);
 
-  // Get location + check for existing broadcast on mount
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id ?? null);
+    });
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
@@ -52,32 +51,16 @@ export default function MapScreen() {
         loc.coords.latitude,
       ];
       setUserCoords(coords);
-      setCity(nearestCity(coords[0], coords[1]));
+      updateLastKnownLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
     })();
 
     fetchMyActiveBroadcast().then(setMyBroadcast);
   }, []);
 
-  const cities = useMemo(() => buildCityList(userCoords), [userCoords]);
-
-  const handleCityToggle = useCallback(() => {
-    setCityOpen((prev) => !prev);
-  }, []);
-
-  const handleCitySelect = useCallback((selected: City) => {
-    setCity(selected);
-    setCityOpen(false);
-    mapRef.current?.flyTo(selected.center, selected.zoom);
-  }, []);
-
-  const handleMapPress = useCallback(() => {
-    setCityOpen(false);
-  }, []);
-
   // ── Broadcast flow ──────────────────────────────────────
 
   const handleFabPress = useCallback(async () => {
-    if (myBroadcast) return; // Already live — status pill handles changes
+    if (myBroadcast) return;
     if (!userCoords) {
       setToastMsg("Enable location to go live");
       return;
@@ -92,6 +75,7 @@ export default function MapScreen() {
       setMyBroadcast(broadcast);
       setContextSheetVisible(true);
       setToastMsg("You're live");
+      scheduleLiveReminder(broadcast.id).catch(() => {});
     } catch (err: any) {
       setToastMsg(err.message);
     } finally {
@@ -107,9 +91,7 @@ export default function MapScreen() {
         setMyBroadcast((prev) =>
           prev ? { ...prev, status_type: statusType } : null
         );
-      } catch {
-        // Silently fail — context is optional
-      }
+      } catch {}
       setContextSheetVisible(false);
     },
     [myBroadcast]
@@ -133,12 +115,25 @@ export default function MapScreen() {
     [myBroadcast]
   );
 
+  const handleToggleVisibility = useCallback(async () => {
+    if (!myBroadcast) return;
+    const newVisibility = !myBroadcast.is_visible;
+    try {
+      await toggleBroadcastVisibility(myBroadcast.id, newVisibility);
+      setMyBroadcast((prev) => prev ? { ...prev, is_visible: newVisibility } : null);
+      setToastMsg(newVisibility ? "You're visible again" : "You're invisible");
+    } catch {
+      setToastMsg("Couldn't update visibility");
+    }
+  }, [myBroadcast]);
+
   const handleEndBroadcast = useCallback(async () => {
     if (!myBroadcast) return;
     try {
       await endBroadcast(myBroadcast.id);
+      await cancelAllReminders();
       setMyBroadcast(null);
-      setToastMsg("You're hidden");
+      setToastMsg("Broadcast ended");
     } catch {
       setToastMsg("Couldn't end broadcast");
     }
@@ -148,9 +143,9 @@ export default function MapScreen() {
     <View style={styles.container}>
       <BonfireMap
         ref={mapRef}
-        initialCenter={city.center}
-        initialZoom={city.zoom}
-        onMapPress={handleMapPress}
+        initialCenter={userCoords ?? STATIC_CITIES[0].center}
+        initialZoom={userCoords ? 15 : STATIC_CITIES[0].zoom}
+        currentUserId={currentUserId}
       />
 
       <View
@@ -158,35 +153,31 @@ export default function MapScreen() {
         pointerEvents="box-none"
       >
         <View style={styles.topRow} pointerEvents="box-none">
-          <TopBar
-            cities={cities}
-            activeCity={city}
-            isOpen={cityOpen}
-            onToggle={handleCityToggle}
-            onSelect={handleCitySelect}
-          />
           {myBroadcast && (
             <StatusPill
               broadcast={myBroadcast}
               onChangeAvailability={handleChangeAvailability}
+              onToggleVisibility={handleToggleVisibility}
               onEndBroadcast={handleEndBroadcast}
             />
           )}
         </View>
       </View>
 
-      {/* FAB — always visible */}
       <StatusFAB
         onPress={handleFabPress}
         isLive={myBroadcast !== null}
       />
 
-      {/* Context sheet — shown after going live */}
       <ContextSheet
         visible={contextSheetVisible}
         onSelect={handleContextSelect}
         onSkip={handleContextSkip}
       />
+
+      {__DEV__ && (
+        <DevPanel userCoords={userCoords} onToast={setToastMsg} />
+      )}
 
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
     </View>

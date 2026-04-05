@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    height: 34,
+    height: 44,
     paddingHorizontal: 18,
     borderRadius: theme.radius.full,
     borderCurve: "continuous",

@@ -82,11 +82,11 @@ export const theme = {
     toast: 50,
   },
 
-  /* ── Spring configs (for Animated.spring) ─────────────────────────── */
+  /* ── Spring configs (for Reanimated withSpring) ───────────────────── */
   spring: {
-    snappy: { damping: 20, stiffness: 300, useNativeDriver: true },   // micro-interactions, press
-    gentle: { damping: 25, stiffness: 150, useNativeDriver: true },    // entrance, fade
-    bouncy: { damping: 15, stiffness: 200, useNativeDriver: true },    // release, overshoot
+    snappy: { damping: 20, stiffness: 300 },   // micro-interactions, press
+    gentle: { damping: 25, stiffness: 150 },    // entrance, fade
+    bouncy: { damping: 15, stiffness: 200 },    // release, overshoot
   },
 } as const;
 

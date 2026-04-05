@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Text, StyleSheet } from "react-native";
+import { Text, StyleSheet } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, cancelAnimation } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
 
@@ -19,29 +20,40 @@ const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string }> = {
 
 export function Toast({ message, variant = "info", onHide }: ToastProps) {
   const insets = useSafeAreaInsets();
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const scale = useRef(new Animated.Value(0.95)).current;
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-12);
+  const scale = useSharedValue(0.95);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
 
   useEffect(() => {
     if (message) {
-      Animated.parallel([
-        Animated.spring(opacity, { toValue: 1, ...theme.spring.gentle }),
-        Animated.spring(translateY, { toValue: 0, ...theme.spring.gentle }),
-        Animated.spring(scale, { toValue: 1, ...theme.spring.gentle }),
-      ]).start();
+      // Enter
+      opacity.value = withSpring(1, theme.spring.gentle);
+      translateY.value = withSpring(0, theme.spring.gentle);
+      scale.value = withSpring(1, theme.spring.gentle);
 
       const duration = variant === "error" ? 3500 : 2600;
 
-      const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.spring(opacity, { toValue: 0, ...theme.spring.snappy }),
-          Animated.spring(translateY, { toValue: -8, ...theme.spring.snappy }),
-          Animated.spring(scale, { toValue: 0.95, ...theme.spring.snappy }),
-        ]).start(() => onHide());
+      timerRef.current = setTimeout(() => {
+        // Exit, then call onHide when opacity spring finishes
+        opacity.value = withSpring(0, theme.spring.snappy, (finished) => {
+          if (finished) runOnJS(onHide)();
+        });
+        translateY.value = withSpring(-8, theme.spring.snappy);
+        scale.value = withSpring(0.95, theme.spring.snappy);
       }, duration);
 
-      return () => clearTimeout(timer);
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        cancelAnimation(opacity);
+        cancelAnimation(translateY);
+        cancelAnimation(scale);
+      };
     }
   }, [message]);
 
@@ -57,9 +69,8 @@ export function Toast({ message, variant = "info", onHide }: ToastProps) {
           top: insets.top + 60,
           backgroundColor: v.bg,
           borderColor: v.border,
-          opacity,
-          transform: [{ translateY }, { scale }],
         },
+        animatedStyle,
       ]}
     >
       <Text style={styles.text}>{message}</Text>

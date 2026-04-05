@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { SectionList, RefreshControl, StyleSheet } from "react-native";
 import { FeedCard } from "./FeedCard";
 import { BucketHeader } from "./BucketHeader";
 import { FeedEmpty, FeedError, FeedSkeleton } from "./FeedEmpty";
 import { fetchFeedData } from "../../lib/queries";
 import { supabase } from "../../lib/supabase";
+import { debounce } from "../../lib/debounce";
 import { theme } from "../../constants/theme";
 import { BUCKET_LABELS, type FeedItem, type FeedBucket } from "../../types";
 
@@ -47,31 +48,30 @@ export function FeedList() {
     }
   }, []);
 
+  const debouncedLoad = useMemo(() => debounce(loadData, 500), [loadData]);
+
   useEffect(() => {
-    // Get current user
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null);
     });
 
     loadData();
 
-    // Realtime: broadcasts
     const broadcastChannel = supabase
       .channel("feed-broadcasts")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "status_broadcasts" },
-        () => loadData()
+        () => debouncedLoad()
       )
       .subscribe();
 
-    // Realtime: joins
     const joinChannel = supabase
       .channel("feed-joins")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "broadcast_joins" },
-        () => loadData()
+        () => debouncedLoad()
       )
       .subscribe();
 
@@ -79,7 +79,7 @@ export function FeedList() {
       supabase.removeChannel(broadcastChannel);
       supabase.removeChannel(joinChannel);
     };
-  }, [loadData]);
+  }, [loadData, debouncedLoad]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -105,6 +105,9 @@ export function FeedList() {
       contentContainerStyle={styles.list}
       ListEmptyComponent={FeedEmpty}
       stickySectionHeadersEnabled={false}
+      maxToRenderPerBatch={8}
+      windowSize={5}
+      initialNumToRender={6}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}

@@ -1,6 +1,6 @@
 import "react-native-url-polyfill/auto";
 import "../global.css";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -18,6 +18,7 @@ import {
   DMSans_700Bold,
 } from "@expo-google-fonts/dm-sans";
 import { supabase } from "../lib/supabase";
+import { registerForPushNotifications } from "../lib/notifications";
 import type { Session } from "@supabase/supabase-js";
 
 SplashScreen.preventAutoHideAsync();
@@ -25,6 +26,7 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const pushRegistered = useRef(false);
   const segments = useSegments();
   const router = useRouter();
 
@@ -48,6 +50,10 @@ export default function RootLayout() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
+      if (session && !pushRegistered.current) {
+        pushRegistered.current = true;
+        registerForPushNotifications().catch(() => {});
+      }
     });
 
     return () => subscription.unsubscribe();

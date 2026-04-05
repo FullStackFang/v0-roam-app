@@ -271,6 +271,40 @@ export async function leaveBroadcast(broadcastId: string): Promise<void> {
   if (error) throw error;
 }
 
+// ── Invisible Mode ───────────────────────────────────────
+
+export async function toggleBroadcastVisibility(
+  broadcastId: string,
+  isVisible: boolean
+): Promise<void> {
+  const { error } = await supabase
+    .from("status_broadcasts")
+    .update({ is_visible: isVisible })
+    .eq("id", broadcastId);
+
+  if (error) throw error;
+}
+
+// ── Dev Seed ─────────────────────────────────────────────
+
+export async function seedAround(lat: number, lng: number): Promise<void> {
+  const { error } = await supabase.rpc("seed_around", {
+    center_lat: lat,
+    center_lng: lng,
+  });
+  if (error) throw error;
+}
+
+export async function clearSeedData(): Promise<void> {
+  const { error } = await supabase.rpc("clear_seed_data");
+  if (error) throw error;
+}
+
+export async function seedCornellLaunch(): Promise<void> {
+  const { error } = await supabase.rpc("seed_cornell_launch");
+  if (error) throw error;
+}
+
 // ── Moment Computation ───────────────────────────────────
 
 const MOMENT_RADIUS_KM = 0.5;
@@ -391,6 +425,16 @@ export function computeMoments(broadcasts: StatusBroadcast[]): {
   return { moments, soloBroadcasts };
 }
 
+let _momentsCache: { key: string; result: ReturnType<typeof computeMoments> } | null = null;
+
+export function computeMomentsCached(broadcasts: StatusBroadcast[]) {
+  const key = broadcasts.map((b) => `${b.id}:${b.join_count ?? 0}`).join("|");
+  if (_momentsCache && _momentsCache.key === key) return _momentsCache.result;
+  const result = computeMoments(broadcasts);
+  _momentsCache = { key, result };
+  return result;
+}
+
 // ── Feed ──────────────────────────────────────────────────
 
 const BUCKET_ORDER: FeedBucket[] = ["happening_now", "later_today", "tonight"];
@@ -418,7 +462,7 @@ function assignBucket(b: StatusBroadcast): FeedBucket {
 
 export async function fetchFeedData(): Promise<FeedItem[]> {
   const broadcasts = await fetchActiveBroadcastsWithJoins();
-  const { moments, soloBroadcasts } = computeMoments(broadcasts);
+  const { moments, soloBroadcasts } = computeMomentsCached(broadcasts);
 
   const items: FeedItem[] = [];
 

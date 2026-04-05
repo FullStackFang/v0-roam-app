@@ -3,6 +3,7 @@ import React, {
   useRef,
   useState,
   useCallback,
+  useMemo,
   useImperativeHandle,
   forwardRef,
 } from "react";
@@ -12,9 +13,9 @@ import MapLibreGL, {
   Camera,
 } from "@maplibre/maplibre-react-native";
 import { supabase } from "../../lib/supabase";
-import { fetchActiveBroadcastsWithJoins, computeMoments } from "../../lib/queries";
-import { BroadcastMarker } from "./BroadcastMarker";
-import { MomentClusterMarker } from "./MomentClusterMarker";
+import { fetchActiveBroadcastsWithJoins, computeMomentsCached } from "../../lib/queries";
+import { debounce } from "../../lib/debounce";
+import { BroadcastMarkersLayer } from "./BroadcastMarkersLayer";
 import type { StatusBroadcast, Moment } from "../../types";
 
 MapLibreGL.setAccessToken(null);
@@ -28,15 +29,11 @@ export interface BonfireMapHandle {
 interface BonfireMapProps {
   initialCenter: [number, number];
   initialZoom: number;
-  onMapPress: () => void;
-  onMarkerPress?: (broadcast: StatusBroadcast) => void;
+  currentUserId: string | null;
 }
 
 export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
-  function BonfireMap(
-    { initialCenter, initialZoom, onMapPress, onMarkerPress },
-    ref
-  ) {
+  function BonfireMap({ initialCenter, initialZoom, currentUserId }, ref) {
     const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
     const [moments, setMoments] = useState<Moment[]>([]);
     const cameraRef = useRef<CameraRef>(null);
@@ -55,13 +52,15 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     const loadBroadcasts = useCallback(async () => {
       try {
         const broadcasts = await fetchActiveBroadcastsWithJoins();
-        const { moments: m, soloBroadcasts: solo } = computeMoments(broadcasts);
+        const { moments: m, soloBroadcasts: solo } = computeMomentsCached(broadcasts);
         setMoments(m);
         setSoloBroadcasts(solo);
       } catch (err) {
         console.warn("Error loading broadcasts:", err);
       }
     }, []);
+
+    const debouncedLoad = useMemo(() => debounce(loadBroadcasts, 500), [loadBroadcasts]);
 
     useEffect(() => {
       loadBroadcasts();
@@ -73,27 +72,19 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "status_broadcasts" },
-          () => loadBroadcasts()
+          () => debouncedLoad()
         )
         .subscribe();
 
       return () => {
         supabase.removeChannel(channel);
       };
-    }, [loadBroadcasts]);
-
-    const handleMarkerPress = useCallback(
-      (broadcast: StatusBroadcast) => {
-        onMarkerPress?.(broadcast);
-      },
-      [onMarkerPress]
-    );
+    }, [debouncedLoad]);
 
     return (
       <MapView
         style={{ flex: 1 }}
         mapStyle={STYLE_URL}
-        onPress={onMapPress}
         logoEnabled={false}
         attributionEnabled={false}
       >
@@ -105,23 +96,11 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
           }}
         />
 
-        {soloBroadcasts
-          .filter((b) => b.lat != null && b.lng != null)
-          .map((b) => (
-            <BroadcastMarker
-              key={b.id}
-              broadcast={b}
-              onPress={handleMarkerPress}
-            />
-          ))}
-
-        {moments.map((m) => (
-          <MomentClusterMarker
-            key={m.id}
-            moment={m}
-            onPress={() => {}}
-          />
-        ))}
+        <BroadcastMarkersLayer
+          broadcasts={soloBroadcasts}
+          moments={moments}
+          currentUserId={currentUserId}
+        />
       </MapView>
     );
   }

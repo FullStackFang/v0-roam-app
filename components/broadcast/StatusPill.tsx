@@ -1,5 +1,17 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, Text, Pressable, Animated, Easing, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  withSequence,
+  interpolate,
+  Easing,
+  cancelAnimation,
+} from "react-native-reanimated";
+import { Eye, EyeOff, XCircle } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
 import {
@@ -11,6 +23,7 @@ import {
 interface StatusPillProps {
   broadcast: StatusBroadcast;
   onChangeAvailability: (duration: BroadcastDuration) => void;
+  onToggleVisibility: () => void;
   onEndBroadcast: () => void;
 }
 
@@ -27,19 +40,37 @@ function emojiForDuration(duration: BroadcastDuration): string {
   return opt?.emoji ?? "\ud83d\udfe2";
 }
 
+const ROW_HEIGHT = 36;
+const COLLAPSED_HEIGHT = 36;
+const EXPANDED_HEIGHT = ROW_HEIGHT * 5 + 8; // 3 availability + invisible + end + padding
+
 export function StatusPill({
   broadcast,
   onChangeAvailability,
+  onToggleVisibility,
   onEndBroadcast,
 }: StatusPillProps) {
   const [countdown, setCountdown] = useState(() =>
     formatCountdown(broadcast.expires_at)
   );
   const [isOpen, setIsOpen] = useState(false);
-  const expandAnim = useRef(new Animated.Value(0)).current;
+  const expandAnim = useSharedValue(0);
 
   const [isUrgent, setIsUrgent] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useSharedValue(1);
+
+  // Animated styles
+  const pillHeightStyle = useAnimatedStyle(() => ({
+    height: interpolate(expandAnim.value, [0, 1], [COLLAPSED_HEIGHT, EXPANDED_HEIGHT]),
+  }));
+
+  const optionOpacityStyle = useAnimatedStyle(() => ({
+    opacity: expandAnim.value,
+  }));
+
+  const pulseDotStyle = useAnimatedStyle(() => ({
+    opacity: pulseAnim.value,
+  }));
 
   // Update countdown every 15s
   useEffect(() => {
@@ -59,34 +90,24 @@ export function StatusPill({
 
   // Breathing pulse for live dot
   useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 0.4,
-          duration: isUrgent ? 600 : 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: isUrgent ? 600 : 1500,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
+    const dur = isUrgent ? 600 : 1500;
+    pulseAnim.value = withRepeat(
+      withSequence(
+        withTiming(0.4, { duration: dur, easing: Easing.inOut(Easing.ease) }),
+        withTiming(1, { duration: dur, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      false
     );
-    anim.start();
-    return () => anim.stop();
+    return () => cancelAnimation(pulseAnim);
   }, [isUrgent]);
 
   // Expand/collapse animation
   useEffect(() => {
-    Animated.spring(expandAnim, {
-      toValue: isOpen ? 1 : 0,
+    expandAnim.value = withSpring(isOpen ? 1 : 0, {
       damping: isOpen ? 22 : 20,
       stiffness: isOpen ? 180 : 280,
-      useNativeDriver: false,
-    }).start();
+    });
   }, [isOpen]);
 
   const handleSelect = useCallback(
@@ -98,20 +119,11 @@ export function StatusPill({
     [onChangeAvailability]
   );
 
-  const handleHidden = useCallback(() => {
+  const handleEndBroadcast = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     setIsOpen(false);
     onEndBroadcast();
   }, [onEndBroadcast]);
-
-  const ROW_HEIGHT = 36;
-  const COLLAPSED_HEIGHT = 36;
-  const EXPANDED_HEIGHT = ROW_HEIGHT * 4 + 8; // 3 availability + hidden + padding
-
-  const animatedHeight = expandAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [COLLAPSED_HEIGHT, EXPANDED_HEIGHT],
-  });
 
   const emoji = emojiForDuration(broadcast.duration);
 
@@ -124,7 +136,7 @@ export function StatusPill({
       <Animated.View
         style={[
           styles.pill,
-          { height: animatedHeight },
+          pillHeightStyle,
           isOpen && styles.pillOpen,
         ]}
       >
@@ -140,8 +152,9 @@ export function StatusPill({
           <Animated.View
             style={[
               styles.liveDot,
-              isUrgent && { backgroundColor: theme.accent },
-              { opacity: pulseAnim },
+              !broadcast.is_visible && { backgroundColor: theme.muted },
+              isUrgent && broadcast.is_visible && { backgroundColor: theme.accent },
+              pulseDotStyle,
             ]}
           />
         </Pressable>
@@ -152,11 +165,10 @@ export function StatusPill({
           return (
             <Animated.View
               key={opt.duration}
-              style={{
-                opacity: expandAnim,
-                height: isOpen ? ROW_HEIGHT : 0,
-                overflow: "hidden",
-              }}
+              style={[
+                optionOpacityStyle,
+                { height: isOpen ? ROW_HEIGHT : 0, overflow: "hidden" },
+              ]}
             >
               <Pressable
                 style={styles.optionRow}
@@ -173,17 +185,43 @@ export function StatusPill({
           );
         })}
 
-        {/* Hidden option */}
+        {/* Invisible toggle */}
         <Animated.View
-          style={{
-            opacity: expandAnim,
-            height: isOpen ? ROW_HEIGHT : 0,
-            overflow: "hidden",
-          }}
+          style={[
+            optionOpacityStyle,
+            { height: isOpen ? ROW_HEIGHT : 0, overflow: "hidden" },
+          ]}
         >
-          <Pressable style={styles.optionRow} onPress={handleHidden}>
-            <Text style={styles.optionEmoji}>{"\u26ab"}</Text>
-            <Text style={styles.optionLabel}>Go hidden</Text>
+          <Pressable style={styles.optionRow} onPress={() => {
+            Haptics.selectionAsync();
+            onToggleVisibility();
+            setIsOpen(false);
+          }}>
+            <View style={styles.optionIcon}>
+              {broadcast.is_visible ? (
+                <EyeOff size={14} color={theme.text} strokeWidth={1.75} />
+              ) : (
+                <Eye size={14} color={theme.text} strokeWidth={1.75} />
+              )}
+            </View>
+            <Text style={styles.optionLabel}>
+              {broadcast.is_visible ? "Go invisible" : "Go visible"}
+            </Text>
+          </Pressable>
+        </Animated.View>
+
+        {/* End broadcast */}
+        <Animated.View
+          style={[
+            optionOpacityStyle,
+            { height: isOpen ? ROW_HEIGHT : 0, overflow: "hidden" },
+          ]}
+        >
+          <Pressable style={styles.optionRow} onPress={handleEndBroadcast}>
+            <View style={styles.optionIcon}>
+              <XCircle size={14} color={theme.error} strokeWidth={1.75} />
+            </View>
+            <Text style={[styles.optionLabel, { color: theme.error }]}>End broadcast</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>
@@ -250,6 +288,10 @@ const styles = StyleSheet.create({
   },
   optionEmoji: {
     fontSize: 14,
+  },
+  optionIcon: {
+    width: 14,
+    alignItems: "center",
   },
   optionLabel: {
     fontFamily: theme.fonts.sansMedium,
