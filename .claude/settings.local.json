@@ -84,7 +84,10 @@
       "Bash(grep -r 'export type StatusBroadcast' /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app --include=*.ts --include=*.tsx)",
       "Bash(grep -l StatusBroadcast /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/*.ts)",
       "Bash(grep -rl 'export type StatusBroadcast' /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/lib /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/constants --include=*.ts)",
-      "Bash(node -e \"const lucide = require\\(''lucide-react-native''\\); console.log\\(''Flame:'', typeof lucide.Flame\\)\")"
+      "Bash(node -e \"const lucide = require\\(''lucide-react-native''\\); console.log\\(''Flame:'', typeof lucide.Flame\\)\")",
+      "Bash(find /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/components/map -type f -name *.tsx -o -name *.ts)",
+      "Bash(grep -r \"ContextSheet\\\\|onFirePress\\\\|setCarouselOpen\" /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/lib --include=*.ts --include=*.tsx)",
+      "Bash(grep:*)"
     ]
   },
   "outputStyle": "Explanatory"

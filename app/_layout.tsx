@@ -1,6 +1,6 @@
 import "react-native-url-polyfill/auto";
 import "../global.css";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -59,27 +59,23 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const onLayoutReady = useCallback(async () => {
-    if (fontsLoaded && authReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, authReady]);
-
   useEffect(() => {
-    onLayoutReady();
-  }, [onLayoutReady]);
-
-  useEffect(() => {
-    if (!authReady) return;
+    if (!fontsLoaded || !authReady) return;
 
     const inAuthGroup = segments[0] === "auth";
+    const inTabs = segments[0] === "(tabs)";
 
     if (!session && !inAuthGroup) {
       router.replace("/auth");
     } else if (session && inAuthGroup) {
-      router.replace("/");
+      router.replace("/(tabs)/map");
+    } else if (session && !inTabs) {
+      router.replace("/(tabs)/map");
     }
-  }, [session, authReady, segments]);
+
+    // Hide splash AFTER routing decision — no blank frame
+    SplashScreen.hideAsync();
+  }, [session, authReady, fontsLoaded, segments]);
 
   if (!fontsLoaded || !authReady) return null;
 

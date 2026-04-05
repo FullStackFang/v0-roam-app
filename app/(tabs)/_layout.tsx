@@ -13,36 +13,17 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const bottomPad = Math.max(insets.bottom, Platform.OS === "android" ? 16 : 0);
 
   return (
-    <View style={[styles.tabBar, { paddingBottom: bottomPad }]}>
-      {/* Map tab */}
-      <Pressable
-        style={styles.tab}
-        onPress={() => {
-          Haptics.selectionAsync();
-          const event = navigation.emit({ type: "tabPress", target: state.routes[0].key, canPreventDefault: true });
-          if (!event.defaultPrevented) {
-            navigation.navigate(state.routes[0].name);
-          }
-        }}
+    <View style={styles.outerWrapper}>
+      {/* Fire button — absolutely positioned above the tab bar so its full
+          touch area is outside the tab bar's hit-test bounds */}
+      <View
+        style={[styles.fireColumn, { bottom: bottomPad + 8 }]}
+        pointerEvents="box-none"
       >
-        <MapPin
-          size={22}
-          color={state.index === 0 ? theme.accent : theme.muted}
-          strokeWidth={state.index === 0 ? 2.25 : 1.5}
-          fill={state.index === 0 ? theme.accent : "none"}
-        />
-        <Text style={[styles.tabLabel, state.index === 0 && styles.tabLabelActive]}>
-          Map
-        </Text>
-      </Pressable>
-
-      {/* Center fire button — raised above the tab bar */}
-      <View style={styles.fireColumn}>
         <Pressable
           style={styles.fireButton}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            // Navigate to map tab first if not already there
             if (state.index !== 0) {
               navigation.navigate(state.routes[0].name);
             }
@@ -54,26 +35,54 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         <Text style={styles.fireLabel}>You're out!</Text>
       </View>
 
-      {/* Feed tab */}
-      <Pressable
-        style={styles.tab}
-        onPress={() => {
-          Haptics.selectionAsync();
-          const event = navigation.emit({ type: "tabPress", target: state.routes[1].key, canPreventDefault: true });
-          if (!event.defaultPrevented) {
-            navigation.navigate(state.routes[1].name);
-          }
-        }}
-      >
-        <List
-          size={22}
-          color={state.index === 1 ? theme.accent : theme.muted}
-          strokeWidth={state.index === 1 ? 2.25 : 1.5}
-        />
-        <Text style={[styles.tabLabel, state.index === 1 && styles.tabLabelActive]}>
-          Feed
-        </Text>
-      </Pressable>
+      {/* Tab bar row */}
+      <View style={[styles.tabBar, { paddingBottom: bottomPad }]}>
+        {/* Map tab */}
+        <Pressable
+          style={styles.tab}
+          onPress={() => {
+            Haptics.selectionAsync();
+            const event = navigation.emit({ type: "tabPress", target: state.routes[0].key, canPreventDefault: true });
+            if (!event.defaultPrevented) {
+              navigation.navigate(state.routes[0].name);
+            }
+          }}
+        >
+          <MapPin
+            size={22}
+            color={state.index === 0 ? theme.accent : theme.muted}
+            strokeWidth={state.index === 0 ? 2.25 : 1.5}
+            fill={state.index === 0 ? theme.accent : "none"}
+          />
+          <Text style={[styles.tabLabel, state.index === 0 && styles.tabLabelActive]}>
+            Map
+          </Text>
+        </Pressable>
+
+        {/* Spacer where fire button visually sits */}
+        <View style={styles.fireSpacer} />
+
+        {/* Feed tab */}
+        <Pressable
+          style={styles.tab}
+          onPress={() => {
+            Haptics.selectionAsync();
+            const event = navigation.emit({ type: "tabPress", target: state.routes[1].key, canPreventDefault: true });
+            if (!event.defaultPrevented) {
+              navigation.navigate(state.routes[1].name);
+            }
+          }}
+        >
+          <List
+            size={22}
+            color={state.index === 1 ? theme.accent : theme.muted}
+            strokeWidth={state.index === 1 ? 2.25 : 1.5}
+          />
+          <Text style={[styles.tabLabel, state.index === 1 && styles.tabLabelActive]}>
+            Feed
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -93,6 +102,10 @@ export default function TabsLayout() {
 const FIRE_SIZE = 60;
 
 const styles = StyleSheet.create({
+  outerWrapper: {
+    overflow: "visible",
+  },
+
   tabBar: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -123,9 +136,15 @@ const styles = StyleSheet.create({
   },
 
   fireColumn: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     alignItems: "center",
-    marginTop: -(FIRE_SIZE / 2 + 4),
+    zIndex: 10,
     gap: 4,
+  },
+  fireSpacer: {
+    width: FIRE_SIZE + 8,
   },
   fireButton: {
     width: FIRE_SIZE,
