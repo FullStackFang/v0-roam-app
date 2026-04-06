@@ -95,27 +95,8 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     const handleMarkerPress = useCallback(
       (item: SelectedMapItem) => {
         onMarkerSelect(item);
-
-        // Fly to the tapped marker
-        const coords: [number, number] =
-          item.type === "broadcast"
-            ? [
-                currentUserId === item.data.user_id
-                  ? item.data.lng!
-                  : ((item.data as StatusBroadcast).fuzzy_lng ?? item.data.lng!),
-                currentUserId === item.data.user_id
-                  ? item.data.lat!
-                  : ((item.data as StatusBroadcast).fuzzy_lat ?? item.data.lat!),
-              ]
-            : [item.data.lng, item.data.lat];
-
-        cameraRef.current?.setCamera({
-          centerCoordinate: coords,
-          animationDuration: 800,
-          animationMode: "flyTo",
-        });
       },
-      [onMarkerSelect, currentUserId],
+      [onMarkerSelect],
     );
 
     return (
