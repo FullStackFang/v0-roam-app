@@ -24,6 +24,7 @@ interface TopBarProps {
   isOpen: boolean;
   onToggle: () => void;
   onSelect: (city: City) => void;
+  showLogo?: boolean;
 }
 
 const ROW_HEIGHT = 38;
@@ -35,6 +36,7 @@ export function TopBar({
   isOpen,
   onToggle,
   onSelect,
+  showLogo = true,
 }: TopBarProps) {
   const expandAnim = useSharedValue(0);
   const pillScale = useSharedValue(1);
@@ -71,8 +73,8 @@ export function TopBar({
   }));
 
   return (
-    <View style={styles.container} pointerEvents="box-none">
-      <Text style={styles.logo}>bonfire</Text>
+    <View style={[styles.container, !showLogo && styles.containerPillOnly]} pointerEvents="box-none">
+      {showLogo && <Text style={styles.logo}>bonfire</Text>}
 
       {/* Pill sits in its own elevated stacking context */}
       <View style={[styles.pillAnchor, isOpen && styles.pillAnchorOpen]}>
@@ -171,6 +173,9 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingHorizontal: 20,
     paddingBottom: 8,
+  },
+  containerPillOnly: {
+    justifyContent: "flex-end",
   },
   logo: {
     fontFamily: theme.fonts.headingBlack,

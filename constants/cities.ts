@@ -1,8 +1,15 @@
+export interface CityBounds {
+  sw: [number, number]; // [lng, lat]
+  ne: [number, number]; // [lng, lat]
+}
+
 export interface City {
   key: string;
   label: string;
   center: [number, number]; // [lng, lat]
   zoom: number;
+  bounds: CityBounds;
+  minZoom?: number;
 }
 
 export const ITHACA: City = {
@@ -10,6 +17,7 @@ export const ITHACA: City = {
   label: "ITHACA",
   center: [-76.4735, 42.4534],
   zoom: 14,
+  bounds: { sw: [-76.62, 42.35], ne: [-76.32, 42.55] },
 };
 
 export const NYC: City = {
@@ -17,10 +25,21 @@ export const NYC: City = {
   label: "NEW YORK",
   center: [-73.9857, 40.7484],
   zoom: 13,
+  bounds: { sw: [-74.26, 40.49], ne: [-73.70, 40.92] },
 };
 
 /** Static cities always shown in the selector. */
 export const STATIC_CITIES: City[] = [ITHACA, NYC];
+
+/** Generate a bounding box (~8-9 km each direction) around a coordinate. */
+const DYNAMIC_BOUND_OFFSET = 0.08;
+
+export function boundsFromCenter(center: [number, number]): CityBounds {
+  return {
+    sw: [center[0] - DYNAMIC_BOUND_OFFSET, center[1] - DYNAMIC_BOUND_OFFSET],
+    ne: [center[0] + DYNAMIC_BOUND_OFFSET, center[1] + DYNAMIC_BOUND_OFFSET],
+  };
+}
 
 /**
  * Build the full city list. If the user granted location,
@@ -34,6 +53,7 @@ export function buildCityList(userCoords: [number, number] | null): City[] {
     label: "CURRENT LOCATION",
     center: userCoords,
     zoom: 14,
+    bounds: boundsFromCenter(userCoords),
   };
   return [current, ...STATIC_CITIES];
 }

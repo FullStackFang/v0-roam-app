@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
@@ -7,10 +7,12 @@ import { MapHeaderBar } from "../../components/map/MapHeaderBar";
 import { QuickActionsGrid } from "../../components/map/QuickActionsGrid";
 import { MarkerDetailCard, type SelectedMapItem } from "../../components/map/MarkerDetailCard";
 import { Toast } from "../../components/ui/Toast";
-import { onFirePress } from "../../lib/events";
+import { onFirePress, onCityPickerToggle } from "../../lib/events";
 import { StatusPill } from "../../components/broadcast/StatusPill";
 import { theme } from "../../constants/theme";
-import { STATIC_CITIES } from "../../constants/cities";
+import { CityPickerMenu } from "../../components/map/CityPickerMenu";
+import { STATIC_CITIES, buildCityList, nearestCity } from "../../constants/cities";
+import type { City } from "../../constants/cities";
 import {
   goLive,
   fetchMyActiveBroadcast,
@@ -38,6 +40,8 @@ export default function MapScreen() {
   const [sending, setSending] = useState(false);
   const [gridOpen, setGridOpen] = useState(false);
   const [selectedMapItem, setSelectedMapItem] = useState<SelectedMapItem | null>(null);
+  const [activeCity, setActiveCity] = useState<City>(STATIC_CITIES[0]);
+  const [citySelectorOpen, setCitySelectorOpen] = useState(false);
 
   const mapRef = useRef<BonfireMapHandle>(null);
 
@@ -75,7 +79,28 @@ export default function MapScreen() {
       setGridOpen((prev) => !prev);
     });
 
-    return () => { unsubFire(); };
+    const unsubCity = onCityPickerToggle(() => {
+      setCitySelectorOpen((prev) => !prev);
+    });
+
+    return () => { unsubFire(); unsubCity(); };
+  }, []);
+
+  // ── City switching ─────────────────────────────────────
+
+  const cities = useMemo(() => buildCityList(userCoords), [userCoords]);
+
+  // Set active city once location resolves
+  useEffect(() => {
+    if (userCoords) {
+      setActiveCity(nearestCity(userCoords[0], userCoords[1]));
+    }
+  }, [userCoords]);
+
+  const handleCitySelect = useCallback((city: City) => {
+    setActiveCity(city);
+    setCitySelectorOpen(false);
+    mapRef.current?.flyTo(city.center, city.zoom);
   }, []);
 
   // ── Broadcast flow ──────────────────────────────────────
@@ -219,6 +244,9 @@ export default function MapScreen() {
           ref={mapRef}
           initialCenter={userCoords ?? STATIC_CITIES[0].center}
           initialZoom={userCoords ? 15 : STATIC_CITIES[0].zoom}
+          maxBounds={activeCity.bounds}
+          minZoomLevel={activeCity.minZoom ?? 11}
+          maxZoomLevel={18}
           currentUserId={currentUserId}
           selectedItem={selectedMapItem}
           onMarkerSelect={handleMarkerSelect}
@@ -248,6 +276,15 @@ export default function MapScreen() {
             />
           )}
         </View>
+
+        {citySelectorOpen && (
+          <CityPickerMenu
+            cities={cities}
+            activeCity={activeCity}
+            onSelect={handleCitySelect}
+            onDismiss={() => setCitySelectorOpen(false)}
+          />
+        )}
 
         {gridOpen && (
           <QuickActionsGrid

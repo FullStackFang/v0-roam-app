@@ -35,7 +35,6 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
             allowOverlap
           >
             <BroadcastMarker
-              id={b.id}
               statusType={b.status_type}
               isSelected={selectedId === b.id}
               onPress={() => onMarkerPress({ type: "broadcast", data: b })}
@@ -52,7 +51,6 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
           allowOverlap
         >
           <BroadcastMarker
-            id={m.id}
             statusType={m.status_type}
             isMoment
             isSelected={selectedId === m.id}

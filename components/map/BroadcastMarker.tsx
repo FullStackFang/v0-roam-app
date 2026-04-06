@@ -27,7 +27,6 @@ const MOMENT_EMOJI_SIZE = 22;
 /* ── Component ───────────────────────────────────────────────── */
 
 interface BroadcastMarkerProps {
-  id: string;
   statusType: StatusType;
   isMoment?: boolean;
   isSelected?: boolean;
@@ -35,7 +34,6 @@ interface BroadcastMarkerProps {
 }
 
 export function BroadcastMarker({
-  id,
   statusType,
   isMoment = false,
   isSelected = false,

@@ -30,6 +30,9 @@ export interface BonfireMapHandle {
 interface BonfireMapProps {
   initialCenter: [number, number];
   initialZoom: number;
+  maxBounds?: { sw: [number, number]; ne: [number, number] };
+  minZoomLevel?: number;
+  maxZoomLevel?: number;
   currentUserId: string | null;
   selectedItem: SelectedMapItem | null;
   onMarkerSelect: (item: SelectedMapItem) => void;
@@ -38,7 +41,7 @@ interface BonfireMapProps {
 
 export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
   function BonfireMap(
-    { initialCenter, initialZoom, currentUserId, selectedItem, onMarkerSelect, onMapPress },
+    { initialCenter, initialZoom, maxBounds, minZoomLevel, maxZoomLevel, currentUserId, selectedItem, onMarkerSelect, onMapPress },
     ref,
   ) {
     const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
@@ -92,13 +95,6 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
 
     const selectedId = selectedItem?.data.id ?? null;
 
-    const handleMarkerPress = useCallback(
-      (item: SelectedMapItem) => {
-        onMarkerSelect(item);
-      },
-      [onMarkerSelect],
-    );
-
     return (
       <MapView
         style={{ flex: 1 }}
@@ -113,6 +109,9 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
             centerCoordinate: initialCenter,
             zoomLevel: initialZoom,
           }}
+          maxBounds={maxBounds ? { ne: maxBounds.ne, sw: maxBounds.sw } : undefined}
+          minZoomLevel={minZoomLevel}
+          maxZoomLevel={maxZoomLevel}
         />
 
         <BroadcastMarkersLayer
@@ -120,7 +119,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
           moments={moments}
           currentUserId={currentUserId}
           selectedId={selectedId}
-          onMarkerPress={handleMarkerPress}
+          onMarkerPress={onMarkerSelect}
         />
       </MapView>
     );
