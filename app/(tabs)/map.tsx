@@ -25,6 +25,8 @@ import {
 import { updateLastKnownLocation, scheduleLiveReminder, cancelAllReminders } from "../../lib/notifications";
 import { supabase } from "../../lib/supabase";
 import { DevPanel } from "../../components/dev/DevPanel";
+import { MyLocationButton } from "../../components/map/MyLocationButton";
+import { isAdmin } from "../../constants/admins";
 import { QUICK_ACTION_OPTIONS } from "../../types";
 import type { Profile, StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
 
@@ -222,6 +224,16 @@ export default function MapScreen() {
     setToastMsg("Coming soon");
   }, []);
 
+  const showDevPanel = __DEV__ || isAdmin(myProfile?.university_email);
+
+  const handleMyLocation = useCallback(() => {
+    if (activeCity.key !== "current") {
+      const currentCity = cities.find((c) => c.key === "current");
+      if (currentCity) setActiveCity(currentCity);
+    }
+    mapRef.current?.flyToUser();
+  }, [cities, activeCity.key]);
+
   const handleMarkerSelect = useCallback((item: SelectedMapItem) => {
     setSelectedMapItem(item);
     setGridOpen(false);
@@ -251,6 +263,7 @@ export default function MapScreen() {
           selectedItem={selectedMapItem}
           onMarkerSelect={handleMarkerSelect}
           onMapPress={handleDismissMarker}
+          onUserLocationUpdate={setUserCoords}
         />
 
         <View
@@ -296,9 +309,12 @@ export default function MapScreen() {
           />
         )}
 
-        {__DEV__ && (
-          <DevPanel userCoords={userCoords} onToast={setToastMsg} />
-        )}
+        <View style={styles.rightControls} pointerEvents="box-none">
+          {userCoords && <MyLocationButton onPress={handleMyLocation} />}
+          {showDevPanel && (
+            <DevPanel userCoords={userCoords} onToast={setToastMsg} />
+          )}
+        </View>
       </View>
 
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
@@ -314,6 +330,14 @@ const styles = StyleSheet.create({
   mapWrapper: {
     flex: 1,
     position: "relative",
+  },
+  rightControls: {
+    position: "absolute",
+    bottom: 160,
+    right: 20,
+    zIndex: theme.z.fab,
+    alignItems: "flex-end",
+    gap: 12,
   },
   controlsOverlay: {
     position: "absolute",

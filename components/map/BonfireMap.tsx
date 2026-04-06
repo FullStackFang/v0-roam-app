@@ -8,9 +8,10 @@ import React, {
   forwardRef,
 } from "react";
 import MapLibreGL, {
-  type CameraRef,
+  type Location,
   MapView,
   Camera,
+  UserLocation,
 } from "@maplibre/maplibre-react-native";
 import { supabase } from "../../lib/supabase";
 import { fetchActiveBroadcastsWithJoins, computeMomentsCached } from "../../lib/queries";
@@ -25,6 +26,7 @@ const STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
 
 export interface BonfireMapHandle {
   flyTo: (center: [number, number], zoom: number) => void;
+  flyToUser: () => void;
 }
 
 interface BonfireMapProps {
@@ -37,28 +39,52 @@ interface BonfireMapProps {
   selectedItem: SelectedMapItem | null;
   onMarkerSelect: (item: SelectedMapItem) => void;
   onMapPress: () => void;
+  onUserLocationUpdate?: (coords: [number, number]) => void;
 }
 
 export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
   function BonfireMap(
-    { initialCenter, initialZoom, maxBounds, minZoomLevel, maxZoomLevel, currentUserId, selectedItem, onMarkerSelect, onMapPress },
+    { initialCenter, initialZoom, maxBounds, minZoomLevel, maxZoomLevel, currentUserId, selectedItem, onMarkerSelect, onMapPress, onUserLocationUpdate },
     ref,
   ) {
     const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
     const [moments, setMoments] = useState<Moment[]>([]);
-    const cameraRef = useRef<CameraRef>(null);
+    const userLocationRef = useRef<[number, number] | null>(null);
     const channelName = useRef(`broadcasts-realtime-${Math.random().toString(36).slice(2)}`);
+
+    // Reactive camera target — drives Camera props instead of imperative setNativeProps
+    const [cameraTarget, setCameraTarget] = useState<{
+      center: [number, number];
+      zoom: number;
+      duration: number;
+      seq: number;
+    } | null>(null);
+    const seqRef = useRef(0);
 
     useImperativeHandle(ref, () => ({
       flyTo: (center: [number, number], zoom: number) => {
-        cameraRef.current?.setCamera({
-          centerCoordinate: center,
-          zoomLevel: zoom,
-          animationDuration: 2000,
-          animationMode: "flyTo",
-        });
+        seqRef.current += 1;
+        setCameraTarget({ center, zoom, duration: 2000, seq: seqRef.current });
+      },
+      flyToUser: () => {
+        const coords = userLocationRef.current;
+        if (!coords) return;
+        seqRef.current += 1;
+        setCameraTarget({ center: coords, zoom: 15, duration: 800, seq: seqRef.current });
       },
     }));
+
+    const handleUserLocationUpdate = useCallback(
+      (location: Location) => {
+        const coords: [number, number] = [
+          location.coords.longitude,
+          location.coords.latitude,
+        ];
+        userLocationRef.current = coords;
+        onUserLocationUpdate?.(coords);
+      },
+      [onUserLocationUpdate],
+    );
 
     const loadBroadcasts = useCallback(async () => {
       try {
@@ -104,14 +130,24 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
         onPress={onMapPress}
       >
         <Camera
-          ref={cameraRef}
           defaultSettings={{
             centerCoordinate: initialCenter,
             zoomLevel: initialZoom,
           }}
+          centerCoordinate={cameraTarget?.center}
+          zoomLevel={cameraTarget?.zoom}
+          animationMode="flyTo"
+          animationDuration={cameraTarget?.duration ?? 0}
           maxBounds={maxBounds ? { ne: maxBounds.ne, sw: maxBounds.sw } : undefined}
           minZoomLevel={minZoomLevel}
           maxZoomLevel={maxZoomLevel}
+        />
+
+        <UserLocation
+          animated
+          renderMode="normal"
+          minDisplacement={5}
+          onUpdate={handleUserLocationUpdate}
         />
 
         <BroadcastMarkersLayer
