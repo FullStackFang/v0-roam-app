@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
     marginBottom: 56,
   },
   logo: {
-    fontFamily: theme.fonts.serifBold,
+    fontFamily: theme.fonts.headingBlack,
     fontSize: 48,
     color: theme.text,
     letterSpacing: -1.2,
@@ -221,11 +221,11 @@ const styles = StyleSheet.create({
   } as any,
   inputFocused: {
     borderColor: theme.accent,
-    boxShadow: "0px 0px 0px 3px rgba(240,77,44,0.08), 0px 1px 3px rgba(26,27,30,0.04)",
+    boxShadow: "0px 0px 0px 3px rgba(255,87,51,0.10), 0px 1px 3px rgba(26,27,30,0.04)",
   } as any,
   button: {
     backgroundColor: theme.accent,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
     borderCurve: "continuous",
     marginTop: 6,
     overflow: "hidden",

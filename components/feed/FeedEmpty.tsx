@@ -72,9 +72,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   iconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderCurve: "continuous",
     backgroundColor: theme.accentTint,
     alignItems: "center",
@@ -82,8 +82,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   } as any,
   title: {
-    fontFamily: theme.fonts.serif,
-    fontSize: 18,
+    fontFamily: theme.fonts.heading,
+    fontSize: 20,
     color: theme.text,
     marginBottom: 6,
   },

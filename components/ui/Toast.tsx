@@ -13,9 +13,9 @@ interface ToastProps {
 }
 
 const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string }> = {
-  info: { bg: "rgba(255,255,255,0.96)", border: theme.border },
-  success: { bg: "rgba(59,170,130,0.08)", border: "rgba(59,170,130,0.20)" },
-  error: { bg: theme.errorTint, border: "rgba(217,48,37,0.20)" },
+  info: { bg: "rgba(255,248,240,0.96)", border: theme.border },
+  success: { bg: "rgba(16,185,129,0.10)", border: "rgba(16,185,129,0.25)" },
+  error: { bg: theme.errorTint, border: "rgba(239,68,68,0.25)" },
 };
 
 export function Toast({ message, variant = "info", onHide }: ToastProps) {
@@ -86,13 +86,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: theme.radius.lg,
     borderCurve: "continuous",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
     boxShadow: theme.shadow.toast,
   } as any,
   text: {
-    fontFamily: theme.fonts.sansMedium,
-    fontSize: 13,
+    fontFamily: theme.fonts.sansSemiBold,
+    fontSize: 14,
     color: theme.text,
   },
 });

@@ -7,16 +7,16 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import {
-  PlayfairDisplay_500Medium,
-  PlayfairDisplay_500Medium_Italic,
-  PlayfairDisplay_700Bold,
-} from "@expo-google-fonts/playfair-display";
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+  Nunito_900Black,
+} from "@expo-google-fonts/nunito";
 import {
-  DMSans_400Regular,
-  DMSans_500Medium,
-  DMSans_600SemiBold,
-  DMSans_700Bold,
-} from "@expo-google-fonts/dm-sans";
+  NunitoSans_400Regular,
+  NunitoSans_500Medium,
+  NunitoSans_600SemiBold,
+  NunitoSans_700Bold,
+} from "@expo-google-fonts/nunito-sans";
 import { supabase } from "../lib/supabase";
 import { registerForPushNotifications } from "../lib/notifications";
 import { clearMomentsCache } from "../lib/queries";
@@ -32,13 +32,13 @@ export default function RootLayout() {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_500Medium,
-    PlayfairDisplay_500Medium_Italic,
-    PlayfairDisplay_700Bold,
-    DMSans_400Regular,
-    DMSans_500Medium,
-    DMSans_600SemiBold,
-    DMSans_700Bold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+    Nunito_900Black,
+    NunitoSans_400Regular,
+    NunitoSans_500Medium,
+    NunitoSans_600SemiBold,
+    NunitoSans_700Bold,
   });
 
   useEffect(() => {

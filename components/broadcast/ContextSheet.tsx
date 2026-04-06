@@ -94,7 +94,7 @@ function ContextPill({
           scale.value = withSpring(1, theme.spring.bouncy);
         }}
       >
-        <Icon size={20} color={theme.text} strokeWidth={1.5} />
+        <Icon size={24} color={theme.accent} strokeWidth={1.75} />
         <Text style={styles.pillLabel}>{label}</Text>
       </Pressable>
     </Animated.View>
@@ -116,10 +116,10 @@ const styles = StyleSheet.create({
     paddingBottom: 34,
   } as any,
   handle: {
-    width: 36,
-    height: 4,
+    width: 44,
+    height: 5,
     backgroundColor: "rgba(0,0,0,0.08)",
-    borderRadius: 2,
+    borderRadius: 3,
     marginTop: 14,
     alignSelf: "center",
   },
@@ -128,8 +128,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   title: {
-    fontFamily: theme.fonts.serif,
-    fontSize: 18,
+    fontFamily: theme.fonts.heading,
+    fontSize: 20,
     color: theme.text,
     marginBottom: 14,
   },
@@ -141,15 +141,15 @@ const styles = StyleSheet.create({
   pill: {
     alignItems: "center",
     gap: 6,
-    paddingVertical: 14,
-    borderRadius: theme.radius.md,
+    paddingVertical: 18,
+    borderRadius: theme.radius.full,
     borderCurve: "continuous",
-    backgroundColor: theme.bg,
+    backgroundColor: theme.accentTint,
     boxShadow: theme.shadow.pill,
   } as any,
   pillLabel: {
-    fontFamily: theme.fonts.sansMedium,
-    fontSize: 12,
+    fontFamily: theme.fonts.sansSemiBold,
+    fontSize: 14,
     color: theme.text,
   },
   skipBtn: {

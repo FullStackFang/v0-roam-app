@@ -12,12 +12,18 @@ export function BucketHeader({ title }: BucketHeaderProps) {
 
 const styles = StyleSheet.create({
   header: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 11,
-    color: theme.muted,
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 12,
+    color: theme.accent,
     textTransform: "uppercase",
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     paddingTop: 20,
     paddingBottom: 8,
-  },
+    paddingHorizontal: 14,
+    backgroundColor: theme.accentTint,
+    borderRadius: theme.radius.full,
+    borderCurve: "continuous",
+    alignSelf: "flex-start",
+    overflow: "hidden",
+  } as any,
 });

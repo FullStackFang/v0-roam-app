@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     height: 44,
-    paddingHorizontal: 18,
+    paddingHorizontal: 22,
     borderRadius: theme.radius.full,
     borderCurve: "continuous",
     gap: 4,
@@ -67,18 +67,18 @@ const styles = StyleSheet.create({
     boxShadow: theme.shadow.joinBtn,
   } as any,
   joined: {
-    backgroundColor: theme.accentTint,
-    borderWidth: 1,
+    backgroundColor: theme.accentFill,
+    borderWidth: 1.5,
     borderColor: theme.accentBorder,
   },
   defaultText: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 13,
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 14,
     color: theme.warmWhite,
   },
   joinedText: {
     fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 13,
+    fontSize: 14,
     color: theme.accent,
   },
 });

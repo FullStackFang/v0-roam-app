@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontFamily: theme.fonts.serifBold,
+    fontFamily: theme.fonts.headingHeavy,
     fontSize: 20,
     color: theme.text,
   },

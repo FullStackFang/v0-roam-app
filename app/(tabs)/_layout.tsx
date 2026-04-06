@@ -30,7 +30,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             emitFirePress();
           }}
         >
-          <Flame size={28} color="#1A1B1E" strokeWidth={1.75} />
+          <Flame size={30} color={theme.warmWhite} strokeWidth={2} />
         </Pressable>
         <Text style={styles.fireLabel}>You're out!</Text>
       </View>
@@ -49,9 +49,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           }}
         >
           <MapPin
-            size={22}
+            size={24}
             color={state.index === 0 ? theme.accent : theme.muted}
-            strokeWidth={state.index === 0 ? 2.25 : 1.5}
+            strokeWidth={state.index === 0 ? 2.25 : 2}
             fill={state.index === 0 ? theme.accent : "none"}
           />
           <Text style={[styles.tabLabel, state.index === 0 && styles.tabLabelActive]}>
@@ -74,9 +74,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           }}
         >
           <List
-            size={22}
+            size={24}
             color={state.index === 1 ? theme.accent : theme.muted}
-            strokeWidth={state.index === 1 ? 2.25 : 1.5}
+            strokeWidth={state.index === 1 ? 2.25 : 2}
           />
           <Text style={[styles.tabLabel, state.index === 1 && styles.tabLabelActive]}>
             Feed
@@ -99,7 +99,7 @@ export default function TabsLayout() {
   );
 }
 
-const FIRE_SIZE = 60;
+const FIRE_SIZE = 68;
 
 const styles = StyleSheet.create({
   outerWrapper: {
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: theme.fonts.sansMedium,
-    fontSize: 10,
+    fontSize: 11,
     color: theme.muted,
     letterSpacing: 0.3,
   },
@@ -150,16 +150,16 @@ const styles = StyleSheet.create({
     width: FIRE_SIZE,
     height: FIRE_SIZE,
     borderRadius: FIRE_SIZE / 2,
-    backgroundColor: theme.green,
+    backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
+    borderWidth: 5,
     borderColor: theme.surfaceElevated,
-    boxShadow: "0px 2px 8px rgba(56,160,122,0.30), 0px 4px 16px rgba(56,160,122,0.15)",
+    boxShadow: theme.shadow.fab,
   } as any,
   fireLabel: {
     fontFamily: theme.fonts.sansMedium,
-    fontSize: 10,
+    fontSize: 11,
     color: theme.muted,
     letterSpacing: 0.3,
   },

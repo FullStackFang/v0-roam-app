@@ -20,7 +20,7 @@ import type { StatusBroadcast, Moment } from "../../types";
 
 MapLibreGL.setAccessToken(null);
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+const STYLE_URL = "https://tiles.openfreemap.org/styles/bright";
 
 export interface BonfireMapHandle {
   flyTo: (center: [number, number], zoom: number) => void;

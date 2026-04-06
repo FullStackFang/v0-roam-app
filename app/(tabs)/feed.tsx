@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   title: {
-    fontFamily: theme.fonts.serifBold,
+    fontFamily: theme.fonts.headingHeavy,
     fontSize: 32,
     color: theme.text,
     letterSpacing: -0.8,

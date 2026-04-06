@@ -24,7 +24,7 @@ function easeOut(t: number): number {
 }
 
 function markerProps(level: number, r0: number, r1: number, r2: number, color: string) {
-  const dotRadius = level === 3 ? 6.5 : level === 2 ? 5.5 : 4.5;
+  const dotRadius = level === 3 ? 9 : level === 2 ? 7.5 : 6;
   const maxScale = level === 3 ? 7 : level === 2 ? 5.5 : 4;
   const startOpacity = level === 3 ? 0.7 : level === 2 ? 0.55 : 0.4;
 
@@ -123,7 +123,7 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
         style={{
           circleRadius: ["get", "ring2radius"],
           circleColor: "rgba(0,0,0,0)",
-          circleStrokeWidth: 1.5,
+          circleStrokeWidth: 2,
           circleStrokeColor: ["get", "color"],
           circleStrokeOpacity: ["*", ["get", "ring2opacity"], ["get", "showRing2"]],
           circlePitchAlignment: "map",
@@ -134,7 +134,7 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
         style={{
           circleRadius: ["get", "ring1radius"],
           circleColor: "rgba(0,0,0,0)",
-          circleStrokeWidth: 1.5,
+          circleStrokeWidth: 2,
           circleStrokeColor: ["get", "color"],
           circleStrokeOpacity: ["*", ["get", "ring1opacity"], ["get", "showRing1"]],
           circlePitchAlignment: "map",
@@ -145,7 +145,7 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
         style={{
           circleRadius: ["get", "ring0radius"],
           circleColor: "rgba(0,0,0,0)",
-          circleStrokeWidth: 1.5,
+          circleStrokeWidth: 2,
           circleStrokeColor: ["get", "color"],
           circleStrokeOpacity: ["get", "ring0opacity"],
           circlePitchAlignment: "map",
@@ -156,7 +156,7 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
         style={{
           circleRadius: ["get", "dotRadius"],
           circleColor: ["get", "color"],
-          circleStrokeWidth: 2,
+          circleStrokeWidth: 2.5,
           circleStrokeColor: "rgba(255,255,255,0.95)",
           circlePitchAlignment: "map",
         }}

@@ -59,19 +59,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   avatar: {
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: theme.surface,
     borderCurve: "continuous",
     alignItems: "center",
     justifyContent: "center",
   } as any,
   avatarText: {
-    fontWeight: "600",
+    fontFamily: theme.fonts.sansBold,
     color: "#fff",
   },
   name: {
-    fontFamily: theme.fonts.sansMedium,
-    fontSize: 13,
+    fontFamily: theme.fonts.sansSemiBold,
+    fontSize: 14,
     color: theme.text,
     maxWidth: 120,
   },

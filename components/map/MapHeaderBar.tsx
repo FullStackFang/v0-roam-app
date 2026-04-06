@@ -43,14 +43,14 @@ export function MapHeaderBar({ profile, onProfilePress }: MapHeaderBarProps) {
           onPress={() => Haptics.selectionAsync()}
           hitSlop={4}
         >
-          <Bell size={20} color={theme.muted} strokeWidth={1.75} />
+          <Bell size={22} color={theme.muted} strokeWidth={2} />
         </Pressable>
         <Pressable
           style={styles.iconBtn}
           onPress={() => Haptics.selectionAsync()}
           hitSlop={4}
         >
-          <Users size={20} color={theme.muted} strokeWidth={1.75} />
+          <Users size={22} color={theme.muted} strokeWidth={2} />
         </Pressable>
       </View>
     </View>
@@ -77,11 +77,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: theme.accentBorder,
   },
   avatarInitial: {
     fontFamily: theme.fonts.sansSemiBold,
@@ -90,7 +92,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   logo: {
-    fontFamily: theme.fonts.serifBold,
+    fontFamily: theme.fonts.headingBlack,
     fontSize: 24,
     color: theme.text,
     letterSpacing: -0.5,

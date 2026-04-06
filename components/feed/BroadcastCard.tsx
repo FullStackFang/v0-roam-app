@@ -120,8 +120,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderRadius: theme.radius.lg,
     borderCurve: "continuous",
-    padding: 18,
+    padding: 20,
     gap: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.accent,
     boxShadow: theme.shadow.card,
   } as any,
   containerForming: {
@@ -140,21 +142,18 @@ const styles = StyleSheet.create({
     gap: 4,
     borderRadius: theme.radius.full,
     borderCurve: "continuous",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderWidth: 1,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
   } as any,
   liveBadge: {
-    backgroundColor: theme.accentTint,
-    borderColor: theme.accentFill,
+    backgroundColor: theme.accentFill,
   },
   formingBadge: {
     backgroundColor: theme.greenTint,
-    borderColor: theme.greenBorder,
   },
   badgeText: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 10,
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 11,
     letterSpacing: 0.8,
   },
   liveText: {
@@ -169,8 +168,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   status: {
-    fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 16,
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 18,
     color: theme.text,
   },
   footer: {
@@ -180,7 +179,7 @@ const styles = StyleSheet.create({
   },
   timeLeft: {
     fontFamily: theme.fonts.sans,
-    fontSize: 12,
+    fontSize: 13,
     color: theme.muted,
     fontVariant: ["tabular-nums"],
   },

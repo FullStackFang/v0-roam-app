@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   logo: {
-    fontFamily: theme.fonts.serifBold,
+    fontFamily: theme.fonts.headingBlack,
     fontSize: 28,
     color: theme.text,
     letterSpacing: -0.6,
@@ -195,9 +195,9 @@ const styles = StyleSheet.create({
     zIndex: -1,
   },
   cityPill: {
-    backgroundColor: "rgba(255,255,255,0.88)",
+    backgroundColor: "rgba(255,255,255,0.94)",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
+    borderColor: "rgba(0,0,0,0.06)",
     borderRadius: theme.radius.lg,
     borderCurve: "continuous",
     paddingVertical: PILL_PADDING / 2,
@@ -216,15 +216,15 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: theme.accent,
   },
   cityText: {
     fontFamily: theme.fonts.sansSemiBold,
-    fontSize: 11,
-    letterSpacing: 1.2,
+    fontSize: 13,
+    letterSpacing: 0.8,
     color: theme.muted,
   },
   dropdownRow: {

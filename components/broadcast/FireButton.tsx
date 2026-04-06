@@ -41,7 +41,7 @@ export function FireButton({ isLive, carouselOpen, onPress }: FireButtonProps) {
           }}
           hitSlop={16}
         >
-          <Flame size={28} color={theme.warmWhite} strokeWidth={1.75} />
+          <Flame size={32} color={theme.warmWhite} strokeWidth={2} />
         </Pressable>
       </Animated.View>
     </View>
@@ -60,9 +60,9 @@ const styles = StyleSheet.create({
     zIndex: theme.z.fab,
   },
   button: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
