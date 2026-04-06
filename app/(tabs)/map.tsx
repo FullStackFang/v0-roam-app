@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { BonfireMap, type BonfireMapHandle } from "../../components/map/BonfireMap";
 import { MapHeaderBar } from "../../components/map/MapHeaderBar";
-import { QuickActionsBar } from "../../components/map/QuickActionsBar";
+import { QuickActionsGrid } from "../../components/map/QuickActionsGrid";
+import { MarkerDetailCard, type SelectedMapItem } from "../../components/map/MarkerDetailCard";
 import { Toast } from "../../components/ui/Toast";
 import { onFirePress } from "../../lib/events";
 import { StatusPill } from "../../components/broadcast/StatusPill";
@@ -22,6 +23,7 @@ import {
 import { updateLastKnownLocation, scheduleLiveReminder, cancelAllReminders } from "../../lib/notifications";
 import { supabase } from "../../lib/supabase";
 import { DevPanel } from "../../components/dev/DevPanel";
+import { QUICK_ACTION_OPTIONS } from "../../types";
 import type { Profile, StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
 
 export default function MapScreen() {
@@ -34,7 +36,8 @@ export default function MapScreen() {
 
   const [myBroadcast, setMyBroadcast] = useState<StatusBroadcast | null>(null);
   const [sending, setSending] = useState(false);
-  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false);
+  const [selectedMapItem, setSelectedMapItem] = useState<SelectedMapItem | null>(null);
 
   const mapRef = useRef<BonfireMapHandle>(null);
 
@@ -69,7 +72,7 @@ export default function MapScreen() {
     })();
 
     const unsubFire = onFirePress(() => {
-      setCarouselOpen(true);
+      setGridOpen((prev) => !prev);
     });
 
     return () => { unsubFire(); };
@@ -86,7 +89,7 @@ export default function MapScreen() {
       }
 
       setSending(true);
-      setCarouselOpen(false);
+      setGridOpen(false);
       try {
         const broadcast = await goLive({
           lat: userCoords[1],
@@ -98,7 +101,7 @@ export default function MapScreen() {
         scheduleLiveReminder(broadcast.id).catch(() => {});
       } catch (err: any) {
         setToastMsg(err.message);
-        setCarouselOpen(true);
+        setGridOpen(true);
       } finally {
         setSending(false);
       }
@@ -144,6 +147,57 @@ export default function MapScreen() {
     }
   }, [myBroadcast]);
 
+  // ── Grid handlers ───────────────────────────────────────
+
+  const handleGridSelect = useCallback(
+    async (statusType: StatusType) => {
+      if (sending) return;
+
+      if (!myBroadcast) {
+        // Not live → go live with this activity
+        await handleQuickAction(statusType);
+        return;
+      }
+
+      // Live → switch activity
+      if (statusType === myBroadcast.status_type) return;
+      setSending(true);
+      try {
+        await updateBroadcastContext(myBroadcast.id, statusType);
+        setMyBroadcast((prev) => prev ? { ...prev, status_type: statusType } : null);
+        const label = QUICK_ACTION_OPTIONS.find((o) => o.type === statusType)?.label ?? statusType;
+        setToastMsg(`Switched to ${label}`);
+        setGridOpen(false);
+      } catch {
+        setToastMsg("Couldn't switch activity");
+      } finally {
+        setSending(false);
+      }
+    },
+    [myBroadcast, sending, handleQuickAction]
+  );
+
+  const handleGridClose = useCallback(async () => {
+    if (myBroadcast) {
+      await handleEndBroadcast();
+    }
+    setGridOpen(false);
+  }, [myBroadcast, handleEndBroadcast]);
+
+  const handleSparkPress = useCallback(() => {
+    setToastMsg("Coming soon");
+  }, []);
+
+  const handleMarkerSelect = useCallback((item: SelectedMapItem) => {
+    setSelectedMapItem(item);
+    setGridOpen(false);
+  }, []);
+
+  const handleDismissMarker = useCallback(() => {
+    setSelectedMapItem(null);
+    setGridOpen(false);
+  }, []);
+
   return (
     <View style={styles.container}>
       <MapHeaderBar
@@ -157,6 +211,9 @@ export default function MapScreen() {
           initialCenter={userCoords ?? STATIC_CITIES[0].center}
           initialZoom={userCoords ? 15 : STATIC_CITIES[0].zoom}
           currentUserId={currentUserId}
+          selectedItem={selectedMapItem}
+          onMarkerSelect={handleMarkerSelect}
+          onMapPress={handleDismissMarker}
         />
 
         <View
@@ -173,12 +230,23 @@ export default function MapScreen() {
               />
             )}
           </View>
+
+          {selectedMapItem && (
+            <MarkerDetailCard
+              item={selectedMapItem}
+              currentUserId={currentUserId}
+              onDismiss={handleDismissMarker}
+            />
+          )}
         </View>
 
-        {!myBroadcast && carouselOpen && (
-          <QuickActionsBar
-            onSelect={handleQuickAction}
-            onDismiss={() => setCarouselOpen(false)}
+        {gridOpen && (
+          <QuickActionsGrid
+            isLive={!!myBroadcast}
+            activeStatusType={myBroadcast?.status_type ?? null}
+            onSelect={handleGridSelect}
+            onClose={handleGridClose}
+            onSparkPress={handleSparkPress}
           />
         )}
 

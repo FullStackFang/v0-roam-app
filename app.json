@@ -17,7 +17,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.bonfire.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Bonfire uses your location to show your friends what's happening nearby."
+        "NSLocationWhenInUseUsageDescription": "Bonfire uses your location to show your friends what's happening nearby.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

@@ -87,7 +87,8 @@
       "Bash(node -e \"const lucide = require\\(''lucide-react-native''\\); console.log\\(''Flame:'', typeof lucide.Flame\\)\")",
       "Bash(find /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/components/map -type f -name *.tsx -o -name *.ts)",
       "Bash(grep -r \"ContextSheet\\\\|onFirePress\\\\|setCarouselOpen\" /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/lib --include=*.ts --include=*.tsx)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(ls -la \"/mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/app/\\(tabs\\)/\")"
     ]
   },
   "outputStyle": "Explanatory"
