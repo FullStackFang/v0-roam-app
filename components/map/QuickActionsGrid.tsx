@@ -18,6 +18,7 @@ import {
 } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
+import { QUICK_ACTION_OPTIONS } from "../../types";
 import type { StatusType } from "../../types";
 
 /* ── Grid data ──────────────────────────────────────────────── */
@@ -31,12 +32,16 @@ interface GridItemDef {
   disabled?: boolean;
 }
 
+const ICON_MAP: Record<string, React.ElementType> = {
+  Utensils, Wine, Footprints, Sparkles, Coffee,
+};
+
 const GRID_ITEMS: GridItemDef[] = [
-  { type: "up_for_dinner", label: "Grab Food", Icon: Utensils },
-  { type: "up_for_drinks", label: "Get Drinks", Icon: Wine },
-  { type: "walk", label: "Go Out", Icon: Footprints },
-  { type: "open", label: "Something", Icon: Sparkles },
-  { type: "grabbing_coffee", label: "Coffee", Icon: Coffee },
+  ...QUICK_ACTION_OPTIONS.map((o) => ({
+    type: o.type as GridItemType,
+    label: o.label,
+    Icon: ICON_MAP[o.iconName],
+  })),
   { type: "spark", label: "Spark", Icon: Zap, disabled: true },
 ];
 
@@ -90,42 +95,26 @@ export function QuickActionsGrid({
 
         {/* Grid */}
         <View style={styles.grid}>
-          <View style={styles.gridRow}>
-            {ROW_1.map((item, i) => (
-              <GridItem
-                key={item.type}
-                item={item}
-                index={i}
-                isActive={isLive && item.type === activeStatusType}
-                onPress={() => {
-                  if (item.disabled) {
-                    onSparkPress();
-                    return;
-                  }
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  onSelect(item.type as StatusType);
-                }}
-              />
-            ))}
-          </View>
-          <View style={styles.gridRow}>
-            {ROW_2.map((item, i) => (
-              <GridItem
-                key={item.type}
-                item={item}
-                index={i + 3}
-                isActive={isLive && item.type === activeStatusType}
-                onPress={() => {
-                  if (item.disabled) {
-                    onSparkPress();
-                    return;
-                  }
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  onSelect(item.type as StatusType);
-                }}
-              />
-            ))}
-          </View>
+          {[ROW_1, ROW_2].map((row, rowIdx) => (
+            <View key={rowIdx} style={styles.gridRow}>
+              {row.map((item, i) => (
+                <GridItem
+                  key={item.type}
+                  item={item}
+                  index={rowIdx * 3 + i}
+                  isActive={isLive && item.type === activeStatusType}
+                  onPress={() => {
+                    if (item.disabled) {
+                      onSparkPress();
+                      return;
+                    }
+                    Haptics.selectionAsync();
+                    onSelect(item.type as StatusType);
+                  }}
+                />
+              ))}
+            </View>
+          ))}
         </View>
       </View>
     </Animated.View>

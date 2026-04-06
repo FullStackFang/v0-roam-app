@@ -71,8 +71,6 @@ export default function RootLayout() {
       router.replace("/auth");
     } else if (session && inAuthGroup) {
       router.replace("/(tabs)/map");
-    } else if (session && !inTabs) {
-      router.replace("/(tabs)/map");
     }
 
     // Hide splash AFTER routing decision — no blank frame

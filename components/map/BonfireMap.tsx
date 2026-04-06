@@ -44,6 +44,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
     const [moments, setMoments] = useState<Moment[]>([]);
     const cameraRef = useRef<CameraRef>(null);
+    const channelName = useRef(`broadcasts-realtime-${Math.random().toString(36).slice(2)}`);
 
     useImperativeHandle(ref, () => ({
       flyTo: (center: [number, number], zoom: number) => {
@@ -75,7 +76,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
 
     useEffect(() => {
       const channel = supabase
-        .channel("broadcasts-realtime")
+        .channel(channelName.current)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "status_broadcasts" },

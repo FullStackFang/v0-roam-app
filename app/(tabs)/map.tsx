@@ -178,11 +178,20 @@ export default function MapScreen() {
   );
 
   const handleGridClose = useCallback(async () => {
-    if (myBroadcast) {
-      await handleEndBroadcast();
+    if (!myBroadcast) {
+      setGridOpen(false);
+      return;
     }
-    setGridOpen(false);
-  }, [myBroadcast, handleEndBroadcast]);
+    try {
+      await endBroadcast(myBroadcast.id);
+      await cancelAllReminders();
+      setMyBroadcast(null);
+      setToastMsg("Broadcast ended");
+      setGridOpen(false);
+    } catch {
+      setToastMsg("Couldn't end broadcast");
+    }
+  }, [myBroadcast]);
 
   const handleSparkPress = useCallback(() => {
     setToastMsg("Coming soon");

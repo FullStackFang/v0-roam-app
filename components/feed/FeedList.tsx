@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { SectionList, RefreshControl, StyleSheet } from "react-native";
 import { FeedCard } from "./FeedCard";
 import { BucketHeader } from "./BucketHeader";
@@ -35,6 +35,7 @@ export function FeedList() {
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const channelName = useRef(`feed-realtime-${Math.random().toString(36).slice(2)}`);
 
   const loadData = useCallback(async () => {
     try {
@@ -58,7 +59,7 @@ export function FeedList() {
     loadData();
 
     const channel = supabase
-      .channel("feed-realtime")
+      .channel(channelName.current)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "status_broadcasts" },
