@@ -141,8 +141,7 @@ export default function MapScreen() {
       if (!myBroadcast) return;
       try {
         await updateBroadcastAvailability(myBroadcast.id, duration);
-        const updated = await fetchMyActiveBroadcast();
-        setMyBroadcast(updated);
+        setMyBroadcast((prev) => prev ? { ...prev, duration } : null);
       } catch {
         setToastMsg("Couldn't update availability");
       }

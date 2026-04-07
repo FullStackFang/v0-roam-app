@@ -3,41 +3,16 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
   FadeInUp,
   FadeOutUp,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
 } from "react-native-reanimated";
 import { X } from "lucide-react-native";
 import { theme } from "../../constants/theme";
 import { STATUS_LABELS, type StatusBroadcast, type Moment, type StatusType } from "../../types";
-import { formatTimeLeft } from "../../lib/formatTime";
+import { formatTimeLeft, formatTimeAgo } from "../../lib/formatTime";
 import { JoinButton } from "../feed/JoinButton";
 import { useJoinToggle } from "../../hooks/useJoinToggle";
 import { AvatarStack } from "../feed/AvatarStack";
+import { STATUS_EMOJI } from "../map/BroadcastMarker";
 import type { Profile } from "../../types";
-
-/* ── Status → emoji mapping (mirrors BroadcastMarker) ────────── */
-
-const STATUS_EMOJI: Record<StatusType, string> = {
-  up_for_drinks: "🍷",
-  up_for_dinner: "🍽️",
-  grabbing_coffee: "☕",
-  walk: "🚶",
-  open: "✨",
-  out_now: "🔥",
-  custom: "💬",
-};
-
-/* ── Helpers ──────────────────────────────────────────────────── */
-
-function timeAgo(created: string): string {
-  const ms = Date.now() - new Date(created).getTime();
-  const min = Math.floor(ms / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
-  const h = Math.floor(min / 60);
-  return `${h}h ago`;
-}
 
 /* ── Card for a solo broadcast ───────────────────────────────── */
 
@@ -87,7 +62,7 @@ function BroadcastDetail({ broadcast, currentUserId, onDismiss }: BroadcastDetai
           <Text style={styles.meta}>{timeLeft}</Text>
         </View>
         <View style={styles.bottomRow}>
-          <Text style={styles.ago}>{timeAgo(broadcast.created_at)}</Text>
+          <Text style={styles.ago}>{formatTimeAgo(broadcast.created_at)}</Text>
           {!isMine && currentUserId && (
             <JoinButton
               joined={hasJoined}
@@ -166,16 +141,11 @@ interface MarkerDetailCardProps {
 }
 
 export function MarkerDetailCard({ item, currentUserId, onDismiss }: MarkerDetailCardProps) {
-  const scale = useSharedValue(1);
-  const animatedScale = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
   return (
     <Animated.View
       entering={FadeInUp.springify().damping(22).stiffness(280).duration(400)}
       exiting={FadeOutUp.springify().damping(22).stiffness(280).duration(300)}
-      style={[styles.card, animatedScale]}
+      style={styles.card}
     >
       {item.type === "broadcast" ? (
         <BroadcastDetail

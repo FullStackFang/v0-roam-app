@@ -4,7 +4,7 @@ import type { StatusType } from "../../types";
 
 /* ── Status → emoji + color mapping ──────────────────────────── */
 
-const STATUS_MARKER: Record<StatusType, { emoji: string; bg: string }> = {
+export const STATUS_MARKER: Record<StatusType, { emoji: string; bg: string }> = {
   up_for_drinks: { emoji: "🍷", bg: "#FF4D30" },
   up_for_dinner: { emoji: "🍽️", bg: "#FFAA33" },
   grabbing_coffee: { emoji: "☕", bg: "#F59E0B" },
@@ -13,6 +13,10 @@ const STATUS_MARKER: Record<StatusType, { emoji: string; bg: string }> = {
   out_now: { emoji: "🔥", bg: "#FF5733" },
   custom: { emoji: "💬", bg: "#FF5733" },
 };
+
+export const STATUS_EMOJI = Object.fromEntries(
+  Object.entries(STATUS_MARKER).map(([k, v]) => [k, v.emoji])
+) as Record<StatusType, string>;
 
 /** Moment marker — visually distinct "something's forming" */
 export const MOMENT_MARKER = { emoji: "🔥", bg: "#FF6B3D" };

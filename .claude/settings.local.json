@@ -88,7 +88,8 @@
       "Bash(find /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/components/map -type f -name *.tsx -o -name *.ts)",
       "Bash(grep -r \"ContextSheet\\\\|onFirePress\\\\|setCarouselOpen\" /mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/lib --include=*.ts --include=*.tsx)",
       "Bash(grep:*)",
-      "Bash(ls -la \"/mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/app/\\(tabs\\)/\")"
+      "Bash(ls -la \"/mnt/c/Users/Stephen.Fang/OneDrive/Documents/workspace/github.com/fullstackfang/v0-roam-app/app/\\(tabs\\)/\")",
+      "Bash(git:*)"
     ]
   },
   "outputStyle": "Explanatory"

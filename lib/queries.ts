@@ -180,52 +180,6 @@ export async function endBroadcast(broadcastId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function insertBroadcast(
-  statusType: StatusType,
-  duration: BroadcastDuration,
-  customText?: string,
-  location?: { lat: number; lng: number }
-): Promise<StatusBroadcast> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
-
-  const expiresAt = computeExpiresAt(duration);
-
-  const row: Record<string, unknown> = {
-    user_id: user.id,
-    status_type: statusType,
-    custom_text: customText ?? null,
-    duration,
-    expires_at: expiresAt.toISOString(),
-  };
-
-  if (location) {
-    row.location = `SRID=4326;POINT(${location.lng} ${location.lat})`;
-    row.lat = location.lat;
-    row.lng = location.lng;
-  }
-
-  const { data, error } = await supabase
-    .from("status_broadcasts")
-    .insert(row)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-export async function fetchActiveBroadcastCount(): Promise<number> {
-  const { count, error } = await supabase
-    .from("status_broadcasts")
-    .select("id", { count: "exact", head: true })
-    .gt("expires_at", new Date().toISOString());
-
-  if (error) throw error;
-  return count ?? 0;
-}
 
 // ── Join Queries ─────────────────────────────────────────
 
@@ -435,7 +389,7 @@ export function clearMomentsCache(): void {
 }
 
 export function computeMomentsCached(broadcasts: StatusBroadcast[]) {
-  const key = broadcasts.map((b) => `${b.id}:${b.join_count ?? 0}`).join("|");
+  const key = broadcasts.map((b) => `${b.id}:${b.join_count ?? 0}:${b.status_type}:${b.is_visible}:${b.expires_at}`).join("|");
   if (_momentsCache && _momentsCache.key === key) return _momentsCache.result;
   const result = computeMoments(broadcasts);
   _momentsCache = { key, result };

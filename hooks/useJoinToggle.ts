@@ -25,10 +25,11 @@ export function useJoinToggle(
       ? baseJoinCount + (optimisticJoined ? 1 : -1)
       : baseJoinCount;
 
-  // Reset optimistic state when server data changes
+  // Reset optimistic state when server data confirms the action
+  const joinsKey = joins.map((j) => j.user_id).join(",");
   useEffect(() => {
     setOptimisticJoined(null);
-  }, [joins.length]);
+  }, [joinsKey]);
 
   const handleJoinToggle = useCallback(async () => {
     if (!currentUserId || isMine) return;

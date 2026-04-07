@@ -84,6 +84,20 @@ export function FeedList() {
     setRefreshing(false);
   }, [loadData]);
 
+  const renderItem = useCallback(
+    ({ item }: { item: FeedItem }) => (
+      <FeedCard item={item} currentUserId={currentUserId} />
+    ),
+    [currentUserId]
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: FeedSection }) => (
+      <BucketHeader title={section.title} />
+    ),
+    []
+  );
+
   if (loading) return <FeedSkeleton />;
   if (error) return <FeedError onRetry={loadData} />;
 
@@ -93,12 +107,8 @@ export function FeedList() {
     <SectionList
       sections={sections}
       keyExtractor={(item) => `${item.type}-${item.data.id}`}
-      renderItem={({ item }) => (
-        <FeedCard item={item} currentUserId={currentUserId} />
-      )}
-      renderSectionHeader={({ section }) => (
-        <BucketHeader title={section.title} />
-      )}
+      renderItem={renderItem}
+      renderSectionHeader={renderSectionHeader}
       contentContainerStyle={styles.list}
       ListEmptyComponent={FeedEmpty}
       stickySectionHeadersEnabled={false}

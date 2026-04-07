@@ -1,19 +1,11 @@
 import React from "react";
 import { Text, StyleSheet } from "react-native";
 import { theme } from "../../constants/theme";
+import { formatTimeAgo } from "../../lib/formatTime";
 import type { BroadcastJoin } from "../../types";
 
 interface SocialProofLineProps {
   joins: BroadcastJoin[];
-}
-
-function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  return `${hours}h ago`;
 }
 
 export function SocialProofLine({ joins }: SocialProofLineProps) {
@@ -30,7 +22,7 @@ export function SocialProofLine({ joins }: SocialProofLineProps) {
     <Text style={styles.text}>
       {name} joined{" "}
       <Text style={styles.dot}>&middot;</Text>{" "}
-      {relativeTime(latest.created_at)}
+      {formatTimeAgo(latest.created_at)}
     </Text>
   );
 }

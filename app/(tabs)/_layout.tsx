@@ -61,7 +61,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           </Pressable>
 
           <Pressable
-            style={styles.cityTab}
+            style={styles.tab}
             onPress={() => {
               Haptics.selectionAsync();
               if (state.index !== 0) {
@@ -102,7 +102,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           </Pressable>
 
           <Pressable
-            style={styles.chatTab}
+            style={[styles.tab, styles.chatTab]}
             onPress={() => Haptics.selectionAsync()}
             hitSlop={8}
           >
@@ -160,19 +160,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 2,
   },
-  cityTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-    gap: 2,
-  },
   chatTab: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-    gap: 2,
     opacity: 0.45,
   },
   tabLabel: {

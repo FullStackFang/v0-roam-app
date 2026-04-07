@@ -35,7 +35,7 @@ function emojiForDuration(duration: BroadcastDuration): string {
 
 const ROW_HEIGHT = 36;
 const COLLAPSED_HEIGHT = 36;
-const EXPANDED_HEIGHT = ROW_HEIGHT * 6 + 8; // header + 3 availability + invisible + end + padding
+const EXPANDED_HEIGHT = ROW_HEIGHT * (1 + AVAILABILITY_OPTIONS.length + 2) + 8;
 
 export function StatusPill({
   broadcast,

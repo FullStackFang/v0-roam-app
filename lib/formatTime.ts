@@ -1,4 +1,16 @@
 /**
+ * Format elapsed time since a date as "just now", "Xm ago", or "Xh ago".
+ */
+export function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  return `${hours}h ago`;
+}
+
+/**
  * Format remaining time until expiry as a human-readable string.
  *
  * "long" (default): "42 min left" / "1h 15m left"
