@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Animated,
   StyleSheet,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import * as Linking from "expo-linking";
+import { usePressScale } from "../hooks/usePressScale";
 import { supabase } from "../lib/supabase";
 import { theme } from "../constants/theme";
 
@@ -25,34 +26,20 @@ function AnimatedButton({
   onPress: () => void;
   disabled: boolean;
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 0.97,
-      ...theme.spring.snappy,
-    }).start();
-  }, []);
-
-  const handlePressOut = useCallback(() => {
-    Animated.spring(scale, {
-      toValue: 1,
-      ...theme.spring.bouncy,
-    }).start();
-  }, []);
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
 
   return (
     <Animated.View
       style={[
         styles.button,
         disabled && { opacity: 0.55 },
-        { transform: [{ scale }] },
+        animatedStyle,
       ]}
     >
       <Pressable
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         disabled={disabled}
         style={styles.buttonInner}
       >
@@ -74,7 +61,7 @@ export default function AuthScreen() {
     if (!email.endsWith("@cornell.edu")) {
       Alert.alert(
         "Cornell Only",
-        "Roam is currently available to Cornell students only. Please use your @cornell.edu email."
+        "Bonfire is currently available to Cornell students only. Please use your @cornell.edu email."
       );
       return;
     }
@@ -114,11 +101,9 @@ export default function AuthScreen() {
       <View style={styles.inner}>
         {/* Brand mark */}
         <View style={styles.brandBlock}>
-          <Text style={styles.logo}>
-            ro<Text style={styles.logoAccent}>a</Text>m
-          </Text>
+          <Text style={styles.logo}>bonfire</Text>
           <Text style={styles.tagline}>
-            See what's alive around you
+            See who's out. Join in.
           </Text>
         </View>
 
@@ -162,7 +147,7 @@ export default function AuthScreen() {
             <Text style={styles.switchText}>
               {isSignUp
                 ? "Already have an account? Sign in"
-                : "New to Roam? Create account"}
+                : "New to Bonfire? Create account"}
             </Text>
           </Pressable>
         </View>
@@ -189,15 +174,11 @@ const styles = StyleSheet.create({
     marginBottom: 56,
   },
   logo: {
-    fontFamily: theme.fonts.serif,
-    fontSize: 52,
+    fontFamily: theme.fonts.headingBlack,
+    fontSize: 48,
     color: theme.text,
-    letterSpacing: -1,
+    letterSpacing: -1.2,
     marginBottom: 10,
-  },
-  logoAccent: {
-    fontFamily: theme.fonts.serifItalic,
-    color: theme.accent,
   },
   tagline: {
     fontFamily: theme.fonts.sans,
@@ -218,28 +199,27 @@ const styles = StyleSheet.create({
   input: {
     fontFamily: theme.fonts.sans,
     backgroundColor: theme.surface,
-    borderWidth: 1.5,
-    borderColor: theme.border,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
     borderRadius: theme.radius.md,
+    borderCurve: "continuous",
     paddingVertical: 14,
     paddingHorizontal: 16,
     fontSize: 15,
     color: theme.text,
-  },
+  } as any,
   inputFocused: {
     borderColor: theme.accent,
-    shadowColor: theme.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+    boxShadow: "0px 0px 0px 3px rgba(255,87,51,0.10), 0px 1px 3px rgba(26,27,30,0.04)",
+  } as any,
   button: {
     backgroundColor: theme.accent,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.full,
+    borderCurve: "continuous",
     marginTop: 6,
     overflow: "hidden",
-  },
+    boxShadow: theme.shadow.fab,
+  } as any,
   buttonInner: {
     paddingVertical: 16,
     alignItems: "center",

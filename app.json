@@ -1,32 +1,33 @@
 {
   "expo": {
-    "name": "Roam",
+    "name": "Bonfire",
     "slug": "roam",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/bonfire-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "scheme": "roam",
+    "scheme": "bonfire",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/bonfire-splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#F5F3EF"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.roam.app",
+      "bundleIdentifier": "com.bonfire.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Roam uses your location to show nearby activity."
+        "NSLocationWhenInUseUsageDescription": "Bonfire uses your location to show your friends what's happening nearby.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/bonfire-adaptive-icon.png",
         "backgroundColor": "#F5F3EF"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.roam.app",
+      "package": "com.bonfire.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -35,7 +36,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/bonfire-favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -43,7 +44,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png"
+          "icon": "./assets/bonfire-icon.png"
         }
       ],
       "expo-font"

@@ -1,5 +1,5 @@
 -- ============================================================
--- Roam — Supabase Schema
+-- Bonfire — Supabase Schema
 -- ============================================================
 
 -- Enable PostGIS for geospatial queries
@@ -15,6 +15,7 @@ CREATE TABLE venues (
   lat           float8 NOT NULL,
   lng           float8 NOT NULL,
   google_place_id text UNIQUE,
+  loyalty_score float8 DEFAULT 0,
   created_at    timestamptz DEFAULT now()
 );
 
@@ -42,6 +43,44 @@ CREATE TABLE vibe_reports (
   confirmed   boolean NOT NULL,
   created_at  timestamptz DEFAULT now()
 );
+
+-- ── PROFILES ─────────────────────────────────────────────────
+CREATE TABLE profiles (
+  id                uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  display_name      text NOT NULL,
+  avatar_url        text,
+  university_email  text NOT NULL,
+  created_at        timestamptz DEFAULT now()
+);
+
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+  raw_name text;
+  display  text;
+BEGIN
+  -- Extract prefix before @, replace dots/underscores with spaces
+  raw_name := split_part(NEW.email, '@', 1);
+  raw_name := replace(replace(raw_name, '.', ' '), '_', ' ');
+  -- Title-case each word
+  display := initcap(raw_name);
+
+  INSERT INTO public.profiles (id, display_name, university_email)
+  VALUES (NEW.id, display, NEW.email);
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user();
 
 -- ── FUNCTIONS ────────────────────────────────────────────────
 
@@ -127,9 +166,22 @@ $$;
 
 -- ── ROW LEVEL SECURITY ──────────────────────────────────────
 
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE venues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE checkins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vibe_reports ENABLE ROW LEVEL SECURITY;
+
+-- Profiles: authenticated users can read all, update own
+CREATE POLICY "Profiles are viewable by authenticated users"
+  ON profiles FOR SELECT
+  TO authenticated
+  USING (true);
+
+CREATE POLICY "Users can update their own profile"
+  ON profiles FOR UPDATE
+  TO authenticated
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
 -- Venues: everyone can read
 CREATE POLICY "Venues are viewable by everyone"
@@ -158,5 +210,38 @@ CREATE POLICY "Users can insert their own vibe reports"
   ON vibe_reports FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+-- ── BROADCAST JOINS ─────────────────────────────────────────
+CREATE TABLE broadcast_joins (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  broadcast_id  uuid NOT NULL REFERENCES status_broadcasts(id) ON DELETE CASCADE,
+  user_id       uuid NOT NULL REFERENCES profiles(id),
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(broadcast_id, user_id)
+);
+
+CREATE INDEX idx_broadcast_joins_broadcast ON broadcast_joins(broadcast_id);
+CREATE INDEX idx_broadcast_joins_user ON broadcast_joins(user_id);
+
+ALTER TABLE broadcast_joins ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Read joins on active broadcasts"
+  ON broadcast_joins FOR SELECT
+  TO authenticated
+  USING (EXISTS (
+    SELECT 1 FROM status_broadcasts
+    WHERE id = broadcast_joins.broadcast_id AND expires_at > now()
+  ));
+
+CREATE POLICY "Insert own joins"
+  ON broadcast_joins FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Delete own joins"
+  ON broadcast_joins FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+
 -- ── REALTIME ─────────────────────────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE checkins;
+ALTER PUBLICATION supabase_realtime ADD TABLE broadcast_joins;

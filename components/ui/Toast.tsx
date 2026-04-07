@@ -1,66 +1,76 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Text, StyleSheet } from "react-native";
+import { Text, StyleSheet } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, runOnJS, cancelAnimation } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../../constants/theme";
+
+type ToastVariant = "info" | "success" | "error";
 
 interface ToastProps {
   message: string | null;
+  variant?: ToastVariant;
   onHide: () => void;
 }
 
-export function Toast({ message, onHide }: ToastProps) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(-12)).current;
-  const scale = useRef(new Animated.Value(0.95)).current;
+const VARIANT_STYLES: Record<ToastVariant, { bg: string; border: string }> = {
+  info: { bg: "rgba(255,248,240,0.96)", border: theme.border },
+  success: { bg: "rgba(16,185,129,0.10)", border: "rgba(16,185,129,0.25)" },
+  error: { bg: theme.errorTint, border: "rgba(239,68,68,0.25)" },
+};
+
+export function Toast({ message, variant = "info", onHide }: ToastProps) {
+  const insets = useSafeAreaInsets();
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(-12);
+  const scale = useSharedValue(0.95);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
 
   useEffect(() => {
     if (message) {
-      // Spring entrance — feels physical, not robotic
-      Animated.parallel([
-        Animated.spring(opacity, {
-          toValue: 1,
-          ...theme.spring.gentle,
-        }),
-        Animated.spring(translateY, {
-          toValue: 0,
-          ...theme.spring.gentle,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          ...theme.spring.gentle,
-        }),
-      ]).start();
+      // Enter
+      opacity.value = withSpring(1, theme.spring.gentle);
+      translateY.value = withSpring(0, theme.spring.gentle);
+      scale.value = withSpring(1, theme.spring.gentle);
 
-      const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateY, {
-            toValue: -8,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(scale, {
-            toValue: 0.95,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-        ]).start(() => onHide());
-      }, 2600);
+      const duration = variant === "error" ? 3500 : 2600;
 
-      return () => clearTimeout(timer);
+      timerRef.current = setTimeout(() => {
+        // Exit, then call onHide when opacity spring finishes
+        opacity.value = withSpring(0, theme.spring.snappy, (finished) => {
+          if (finished) runOnJS(onHide)();
+        });
+        translateY.value = withSpring(-8, theme.spring.snappy);
+        scale.value = withSpring(0.95, theme.spring.snappy);
+      }, duration);
+
+      return () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        cancelAnimation(opacity);
+        cancelAnimation(translateY);
+        cancelAnimation(scale);
+      };
     }
   }, [message]);
 
   if (!message) return null;
 
+  const v = VARIANT_STYLES[variant];
+
   return (
     <Animated.View
       style={[
         styles.container,
-        { opacity, transform: [{ translateY }, { scale }] },
+        {
+          top: insets.top + 60,
+          backgroundColor: v.bg,
+          borderColor: v.border,
+        },
+        animatedStyle,
       ]}
     >
       <Text style={styles.text}>{message}</Text>
@@ -71,25 +81,18 @@ export function Toast({ message, onHide }: ToastProps) {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    top: 118,
     alignSelf: "center",
-    zIndex: 50,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    zIndex: theme.z.toast,
     borderWidth: 1,
-    borderColor: theme.border,
     borderRadius: theme.radius.lg,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    // Tinted shadow
-    shadowColor: "#1A1B1E",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 6,
-  },
+    borderCurve: "continuous",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    boxShadow: theme.shadow.toast,
+  } as any,
   text: {
-    fontFamily: theme.fonts.sansMedium,
-    fontSize: 13,
+    fontFamily: theme.fonts.sansSemiBold,
+    fontSize: 14,
     color: theme.text,
   },
 });

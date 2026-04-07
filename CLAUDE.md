@@ -2,9 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What is Roam
+## What is Bonfire
 
-Roam is a real-time social map app for Cornell University students. Users see nearby venues on an interactive map, check in with "vibes" (buzzing/quiet/skip), and view crowdsourced activity levels via heatmaps. Check-ins expire after 2 hours.
+Bonfire is a real-time social availability app for Cornell University students. Users broadcast that they're "out" with one tap, appear on a live map, and others can see who's available and join what's forming. Everything is ephemeral — broadcasts auto-expire.
+
+**Core principle:** Availability > Events. Speed over complexity. 1 tap to go live, 1–2 taps to join.
 
 ## Development Commands
 
@@ -21,56 +23,59 @@ eas build --profile production --platform android   # Production build
 
 Note: `.npmrc` sets `legacy-peer-deps=true` — use `npm install` (not pnpm).
 
+**Expo Go does NOT work** — MapLibre GL Native requires native code bundling. Always use a dev client build (`eas build --profile development`) to test on-device.
+
 ## Architecture
 
 **Expo Router** file-based routing in `app/`:
 - `_layout.tsx` — Root layout with Supabase auth guard (redirects to `/auth` if no session)
-- `index.tsx` — Main map screen, orchestrates all state (venues, checkins, filters, selected venue)
+- `(tabs)/map.tsx` — Main map screen with broadcast FAB
+- `(tabs)/feed.tsx` — Feed of active broadcasts
 - `auth.tsx` — Login/signup restricted to `@cornell.edu` emails
 
 **Data layer** in `lib/`:
 - `supabase.ts` — Client init with AsyncStorage persistence and auto-refresh
-- `queries.ts` — All Supabase queries and business logic helpers (`fetchVenues`, `fetchActiveCheckins`, `fetchActivityPoints`, `insertCheckin`, `confirmVibe`, `reportVibe`, `getActivityLevel`, `getHeatColor`, `filterVenuesByCategory`)
+- `queries.ts` — Supabase queries: `fetchProfile`, `upsertProfile`, `fetchActiveBroadcasts`, `insertBroadcast`, `fetchActiveBroadcastCount`, `fetchFeedData`
 
-**Components** in `components/map/`:
-- `RoamMap.tsx` — MapLibre GL map (OpenFreeMap tiles), animated venue markers with pulsing rings, heatmap layer, real-time Supabase subscription on `checkins` table
-- `SpotCard.tsx` — Bottom sheet for venue details and vibe reporting, spring-animated slide up/down
-- `TopBar.tsx` — Header with logo and location pill
-- `FilterBar.tsx` — Horizontal scrollable category filter pills
-- `TimeToggle.tsx` — Tonight/Weekend toggle
+**Components** in `components/`:
+- `map/BonfireMap.tsx` — MapLibre GL map (OpenFreeMap positron tiles), real-time Supabase subscription on `status_broadcasts` table
+- `map/TopBar.tsx` — Header with logo and city selector pill
+- `broadcast/StatusFAB.tsx` — Floating action button to open broadcast sheet
+- `broadcast/BroadcastSheet.tsx` — Bottom sheet for broadcasting availability (preset statuses + custom text + duration)
+- `feed/FeedList.tsx` — Pull-to-refresh FlatList of feed items
+- `feed/FeedCard.tsx` — Routes feed items to card components
+- `feed/BroadcastCard.tsx` — Card displaying an active broadcast
+- `feed/AvatarStack.tsx` — Reusable avatar stack component
+- `ui/Toast.tsx` — Floating toast notification
 
 **Shared:**
-- `constants/theme.ts` — Centralized design tokens (colors, fonts)
+- `constants/theme.ts` — Centralized design tokens (colors, fonts, radii, spring configs)
+- `constants/cities.ts` — City definitions (Ithaca, NYC) with map centers
 - `types/index.ts` — All TypeScript types
 
 ## Supabase Schema
 
-Three tables in `supabase/schema.sql` with PostGIS enabled:
+Core tables in `supabase/schema.sql` with PostGIS enabled:
 
-- **`venues`** — Locations with PostGIS geography column, categories: `eatdrink | happening | move | outside | focus`
-- **`checkins`** — User check-ins with `vibe` (buzzing/quiet/skip), `activity_score` (0–1), auto-expires in 2 hours
-- **`vibe_reports`** — Confirmations/rejections of existing vibes
+- **`profiles`** — User profiles auto-created on signup via trigger
+- **`venues`** — Locations with PostGIS geography column (kept for future venue context)
+- **`status_broadcasts`** — User availability broadcasts with status_type, duration, optional location, auto-expiry
 
-Key RPC functions: `get_active_activity_points()` (GeoJSON for heatmap), `compute_activity_score()`, `confirm_vibe()`.
-
-Row-level security is enabled on all tables. Realtime is enabled on `checkins`.
-
-Seed data in `supabase/seed.ts` — 8 demo venues with mock checkins.
+Row-level security is enabled on all tables. Realtime is enabled on `status_broadcasts`.
 
 ## Styling
 
 NativeWind (Tailwind for React Native) with custom theme in `tailwind.config.js`:
-- Accent: `#FF5C3A`, Warm: `#F09040`, Cool: `#4DAAAC`, Green: `#3BAA82`
+- Accent: `#F04D2C`, Warm: `#E08A3C`, Cool: `#4A9E9E`, Green: `#38A07A`
 - Fonts: Playfair Display (serif headings), DM Sans (sans body)
-- Heat gradient colors: 6 stops (`heat-a` through `heat-f`)
 - All colors also exported in `constants/theme.ts` for use outside Tailwind
 
 ## Key Patterns
 
-- **Real-time**: `RoamMap` subscribes to Supabase realtime channel on `checkins` table and re-fetches on INSERT/UPDATE/DELETE
-- **Animations**: Uses React Native `Animated` API (not Reanimated) for marker pulse rings and SpotCard slide; native driver where possible
+- **Real-time**: `BonfireMap` subscribes to Supabase realtime on `status_broadcasts` table
+- **Animations**: Uses React Native `Animated` API (not Reanimated); native driver where possible
 - **Map center**: Cornell campus at `42.4534, -76.4735`, zoom 14
-- **Map tiles**: OpenFreeMap (`https://tiles.openfreemap.org/styles/liberty`)
+- **Map tiles**: OpenFreeMap (`https://tiles.openfreemap.org/styles/positron`)
 - **Path alias**: `@/*` maps to project root in tsconfig
 - **New Architecture**: Enabled in app.json
 
@@ -80,5 +85,4 @@ Required in `.env.local`:
 ```
 EXPO_PUBLIC_SUPABASE_URL=<supabase project url>
 EXPO_PUBLIC_SUPABASE_ANON_KEY=<supabase anon key>
-EXPO_PUBLIC_GOOGLE_PLACES_KEY=<google places api key>
 ```

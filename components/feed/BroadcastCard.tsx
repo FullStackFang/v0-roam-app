@@ -1,0 +1,202 @@
+import React from "react";
+import { View, Text, Pressable, StyleSheet } from "react-native";
+import Animated, { FadeInUp } from "react-native-reanimated";
+import { Radio, Users } from "lucide-react-native";
+import * as Haptics from "../../lib/haptics";
+import { theme } from "../../constants/theme";
+import { usePressScale } from "../../hooks/usePressScale";
+import { STATUS_ICONS } from "../../constants/statusIcons";
+import { formatTimeLeft } from "../../lib/formatTime";
+import { useJoinToggle } from "../../hooks/useJoinToggle";
+import { AvatarStack } from "./AvatarStack";
+import { JoinButton } from "./JoinButton";
+import { SocialProofLine } from "./SocialProofLine";
+import { STATUS_LABELS, type StatusBroadcast, type Profile } from "../../types";
+
+interface BroadcastCardProps {
+  broadcast: StatusBroadcast;
+  currentUserId: string | null;
+}
+
+export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) {
+  const { animatedStyle: animatedScale, onPressIn, onPressOut } = usePressScale(0.975);
+
+  const isMine = currentUserId === broadcast.user_id;
+  const joins = broadcast.joins ?? [];
+  const { joinCount, omwCount, joinButtonProps } = useJoinToggle(
+    broadcast.id,
+    currentUserId,
+    isMine,
+    joins,
+    broadcast.join_count ?? 0
+  );
+  const isForming = joinCount > 0;
+
+  const label =
+    broadcast.status_type === "custom"
+      ? broadcast.custom_text ?? "Available"
+      : STATUS_LABELS[broadcast.status_type];
+
+  const timeLeft = formatTimeLeft(broadcast.expires_at);
+  const ContextIcon = STATUS_ICONS[broadcast.status_type];
+
+  const allProfiles: Profile[] = [];
+  if (broadcast.profile) allProfiles.push(broadcast.profile);
+  for (const j of joins) {
+    if (j.profile && j.user_id !== broadcast.user_id) {
+      allProfiles.push(j.profile);
+    }
+  }
+
+  return (
+    <Animated.View
+      entering={FadeInUp.springify().damping(20).stiffness(200).duration(350)}
+      style={animatedScale}
+    >
+      <Pressable
+        style={[styles.container, isForming && styles.containerForming]}
+        onPressIn={() => {
+          Haptics.selectionAsync();
+          onPressIn();
+        }}
+        onPressOut={onPressOut}
+      >
+        <View style={styles.header}>
+          <AvatarStack
+            profiles={allProfiles}
+            totalCount={allProfiles.length}
+            size={isForming ? 28 : 32}
+          />
+          <View style={[styles.badge, isForming ? styles.formingBadge : styles.liveBadge]}>
+            {isForming ? (
+              <>
+                <Users size={11} color={theme.green} strokeWidth={2.25} />
+                <Text style={[styles.badgeText, styles.formingText]}>FORMING</Text>
+              </>
+            ) : (
+              <>
+                <Radio size={11} color={theme.accent} strokeWidth={2.25} />
+                <Text style={[styles.badgeText, styles.liveText]}>LIVE</Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.statusRow}>
+          {ContextIcon && (
+            <ContextIcon size={16} color={theme.text} strokeWidth={1.75} />
+          )}
+          <Text style={styles.status}>
+            {isForming ? `${label} forming` : label}
+          </Text>
+        </View>
+
+        {broadcast.custom_text && broadcast.status_type !== "custom" && (
+          <Text style={styles.customText} numberOfLines={2}>
+            {broadcast.custom_text}
+          </Text>
+        )}
+
+        {isForming && joins.length > 0 && (
+          <SocialProofLine joins={joins} />
+        )}
+
+        <View style={styles.footer}>
+          <View style={styles.footerLeft}>
+            <Text style={styles.timeLeft}>{timeLeft}</Text>
+            {omwCount > 0 && (
+              <Text style={styles.omwCount}>{omwCount} on the way</Text>
+            )}
+          </View>
+          {!isMine && currentUserId && (
+            <JoinButton {...joinButtonProps} />
+          )}
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: theme.surface,
+    borderRadius: theme.radius.lg,
+    borderCurve: "continuous",
+    padding: 20,
+    gap: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.accent,
+    boxShadow: theme.shadow.card,
+  } as any,
+  containerForming: {
+    borderLeftWidth: 3,
+    borderLeftColor: theme.green,
+    boxShadow: theme.shadow.cardForming,
+  } as any,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: theme.radius.full,
+    borderCurve: "continuous",
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+  } as any,
+  liveBadge: {
+    backgroundColor: theme.accentFill,
+  },
+  formingBadge: {
+    backgroundColor: theme.greenTint,
+  },
+  badgeText: {
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 11,
+    letterSpacing: 0.8,
+  },
+  liveText: {
+    color: theme.accent,
+  },
+  formingText: {
+    color: theme.green,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  status: {
+    fontFamily: theme.fonts.sansBold,
+    fontSize: 18,
+    color: theme.text,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  footerLeft: {
+    gap: 2,
+  },
+  omwCount: {
+    fontFamily: theme.fonts.sansMedium,
+    fontSize: 12,
+    color: theme.accent,
+  },
+  customText: {
+    fontFamily: theme.fonts.sans,
+    fontSize: 14,
+    color: theme.muted,
+    lineHeight: 19,
+  },
+  timeLeft: {
+    fontFamily: theme.fonts.sans,
+    fontSize: 13,
+    color: theme.muted,
+    fontVariant: ["tabular-nums"],
+  },
+});
