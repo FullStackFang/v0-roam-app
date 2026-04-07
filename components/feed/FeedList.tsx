@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { SectionList, RefreshControl, StyleSheet } from "react-native";
 import { FeedCard } from "./FeedCard";
 import { BucketHeader } from "./BucketHeader";
 import { FeedEmpty, FeedError, FeedSkeleton } from "./FeedEmpty";
-import { fetchFeedData, BUCKET_ORDER } from "../../lib/queries";
-import { supabase } from "../../lib/supabase";
-import { debounce } from "../../lib/debounce";
+import { BUCKET_ORDER } from "../../lib/queries";
+import { useBroadcasts } from "../../lib/BroadcastsContext";
 import { theme } from "../../constants/theme";
 import { BUCKET_LABELS, type FeedItem, type FeedBucket } from "../../types";
 
@@ -30,59 +29,14 @@ function groupByBucket(items: FeedItem[]): FeedSection[] {
 }
 
 export function FeedList() {
-  const [items, setItems] = useState<FeedItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { feedItems, currentUserId, loading, error, refresh } = useBroadcasts();
   const [refreshing, setRefreshing] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const channelName = useRef(`feed-realtime-${Math.random().toString(36).slice(2)}`);
-
-  const loadData = useCallback(async () => {
-    try {
-      setError(false);
-      const data = await fetchFeedData();
-      setItems(data);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const debouncedLoad = useMemo(() => debounce(loadData, 500), [loadData]);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setCurrentUserId(user?.id ?? null);
-    });
-
-    loadData();
-
-    const channel = supabase
-      .channel(channelName.current)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "status_broadcasts" },
-        () => debouncedLoad()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "broadcast_joins" },
-        () => debouncedLoad()
-      )
-      .subscribe();
-
-    return () => {
-      debouncedLoad.cancel();
-      supabase.removeChannel(channel);
-    };
-  }, [loadData, debouncedLoad]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData();
+    await refresh();
     setRefreshing(false);
-  }, [loadData]);
+  }, [refresh]);
 
   const renderItem = useCallback(
     ({ item }: { item: FeedItem }) => (
@@ -99,9 +53,9 @@ export function FeedList() {
   );
 
   if (loading) return <FeedSkeleton />;
-  if (error) return <FeedError onRetry={loadData} />;
+  if (error) return <FeedError onRetry={refresh} />;
 
-  const sections = groupByBucket(items);
+  const sections = groupByBucket(feedItems);
 
   return (
     <SectionList

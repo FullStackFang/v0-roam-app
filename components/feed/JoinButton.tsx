@@ -1,8 +1,9 @@
 import React from "react";
 import { Pressable, Text, StyleSheet, ActivityIndicator } from "react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { Check } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
+import { usePressScale } from "../../hooks/usePressScale";
 import { theme } from "../../constants/theme";
 
 interface JoinButtonProps {
@@ -12,28 +13,18 @@ interface JoinButtonProps {
 }
 
 export function JoinButton({ joined, loading, onPress }: JoinButtonProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    scale.value = withSpring(0.92, theme.spring.snappy);
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, theme.spring.bouncy);
-  };
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.92);
 
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
         style={[styles.button, joined ? styles.joined : styles.default]}
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPressIn();
+        }}
+        onPressOut={onPressOut}
         disabled={loading}
       >
         {loading ? (

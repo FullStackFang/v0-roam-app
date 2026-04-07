@@ -1,9 +1,7 @@
 import React, {
-  useEffect,
   useRef,
   useState,
   useCallback,
-  useMemo,
   useImperativeHandle,
   forwardRef,
 } from "react";
@@ -13,11 +11,8 @@ import MapLibreGL, {
   Camera,
   UserLocation,
 } from "@maplibre/maplibre-react-native";
-import { supabase } from "../../lib/supabase";
-import { fetchActiveBroadcastsWithJoins, computeMomentsCached } from "../../lib/queries";
-import { debounce } from "../../lib/debounce";
+import { useBroadcasts } from "../../lib/BroadcastsContext";
 import { BroadcastMarkersLayer } from "./BroadcastMarkersLayer";
-import type { StatusBroadcast, Moment } from "../../types";
 import type { SelectedMapItem } from "./MarkerDetailCard";
 
 MapLibreGL.setAccessToken(null);
@@ -47,10 +42,8 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     { initialCenter, initialZoom, maxBounds, minZoomLevel, maxZoomLevel, currentUserId, selectedItem, onMarkerSelect, onMapPress, onUserLocationUpdate },
     ref,
   ) {
-    const [soloBroadcasts, setSoloBroadcasts] = useState<StatusBroadcast[]>([]);
-    const [moments, setMoments] = useState<Moment[]>([]);
+    const { moments, soloBroadcasts } = useBroadcasts();
     const userLocationRef = useRef<[number, number] | null>(null);
-    const channelName = useRef(`broadcasts-realtime-${Math.random().toString(36).slice(2)}`);
 
     // Reactive camera target — drives Camera props instead of imperative setNativeProps
     const [cameraTarget, setCameraTarget] = useState<{
@@ -85,39 +78,6 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
       },
       [onUserLocationUpdate],
     );
-
-    const loadBroadcasts = useCallback(async () => {
-      try {
-        const broadcasts = await fetchActiveBroadcastsWithJoins();
-        const { moments: m, soloBroadcasts: solo } = computeMomentsCached(broadcasts);
-        setMoments(m);
-        setSoloBroadcasts(solo);
-      } catch (err) {
-        console.warn("Error loading broadcasts:", err);
-      }
-    }, []);
-
-    const debouncedLoad = useMemo(() => debounce(loadBroadcasts, 500), [loadBroadcasts]);
-
-    useEffect(() => {
-      loadBroadcasts();
-    }, [loadBroadcasts]);
-
-    useEffect(() => {
-      const channel = supabase
-        .channel(channelName.current)
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "status_broadcasts" },
-          () => debouncedLoad()
-        )
-        .subscribe();
-
-      return () => {
-        debouncedLoad.cancel();
-        supabase.removeChannel(channel);
-      };
-    }, [debouncedLoad]);
 
     const selectedId = selectedItem?.data.id ?? null;
 

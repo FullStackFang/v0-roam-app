@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import Animated, { FadeInUp, FadeInDown, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeInDown } from "react-native-reanimated";
 import { Flame, ChevronDown } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme, avatarColor } from "../../constants/theme";
+import { usePressScale } from "../../hooks/usePressScale";
 import { STATUS_ICONS } from "../../constants/statusIcons";
 import { formatTimeLeft } from "../../lib/formatTime";
 import { useJoinToggle } from "../../hooks/useJoinToggle";
@@ -17,12 +18,8 @@ interface MomentCardProps {
 }
 
 export function MomentCard({ moment, currentUserId }: MomentCardProps) {
-  const scale = useSharedValue(1);
+  const { animatedStyle: animatedScale, onPressIn, onPressOut } = usePressScale(0.975);
   const [expanded, setExpanded] = useState(false);
-
-  const animatedScale = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
 
   const label = STATUS_LABELS[moment.status_type];
   const ContextIcon = STATUS_ICONS[moment.status_type];
@@ -40,12 +37,8 @@ export function MomentCard({ moment, currentUserId }: MomentCardProps) {
           Haptics.selectionAsync();
           setExpanded(!expanded);
         }}
-        onPressIn={() => {
-          scale.value = withSpring(0.975, theme.spring.snappy);
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, theme.spring.bouncy);
-        }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
       >
         {/* Header */}
         <View style={styles.header}>

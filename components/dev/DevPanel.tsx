@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import Animated, { FadeInUp, FadeOutDown, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated, { FadeInUp, FadeOutDown } from "react-native-reanimated";
 import { Wrench, Flame, Trash2, MapPin, X } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
+import { usePressScale } from "../../hooks/usePressScale";
 import { theme } from "../../constants/theme";
 import { seedAround, clearSeedData, seedCornellLaunch } from "../../lib/queries";
 
@@ -80,18 +81,15 @@ export function DevPanel({ userCoords, onToast }: DevPanelProps) {
 }
 
 function DevButton({ open, onPress }: { open: boolean; onPress: () => void }) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.9);
 
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
         style={[styles.fab, open && styles.fabOpen]}
         onPress={onPress}
-        onPressIn={() => { scale.value = withSpring(0.9, theme.spring.snappy); }}
-        onPressOut={() => { scale.value = withSpring(1, theme.spring.bouncy); }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
       >
         {open ? (
           <X size={18} color={theme.muted} strokeWidth={2} />
@@ -116,10 +114,7 @@ function ActionRow({
   loading: boolean;
   onPress: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
 
   return (
     <Animated.View style={animatedStyle}>
@@ -127,8 +122,8 @@ function ActionRow({
         style={[styles.actionRow, loading && { opacity: 0.5 }]}
         onPress={onPress}
         disabled={loading}
-        onPressIn={() => { scale.value = withSpring(0.97, theme.spring.snappy); }}
-        onPressOut={() => { scale.value = withSpring(1, theme.spring.bouncy); }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
       >
         <Icon size={16} color={color} strokeWidth={1.75} />
         <Text style={styles.actionLabel}>{label}</Text>

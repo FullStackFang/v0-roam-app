@@ -23,7 +23,7 @@ import {
   toggleBroadcastVisibility,
 } from "../../lib/queries";
 import { updateLastKnownLocation, scheduleLiveReminder, cancelAllReminders } from "../../lib/notifications";
-import { supabase } from "../../lib/supabase";
+import { useBroadcasts } from "../../lib/BroadcastsContext";
 import { DevPanel } from "../../components/dev/DevPanel";
 import { MyLocationButton } from "../../components/map/MyLocationButton";
 import { isAdmin } from "../../constants/admins";
@@ -32,10 +32,10 @@ import type { Profile, StatusBroadcast, StatusType, BroadcastDuration } from "..
 
 export default function MapScreen() {
   const router = useRouter();
+  const { currentUserId } = useBroadcasts();
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [myProfile, setMyProfile] = useState<Profile | null>(null);
 
   const [myBroadcast, setMyBroadcast] = useState<StatusBroadcast | null>(null);
@@ -47,33 +47,15 @@ export default function MapScreen() {
 
   const mapRef = useRef<BonfireMapHandle>(null);
 
+  // Location permissions + event listeners
   useEffect(() => {
     (async () => {
-      const [{ data: { user } }, locationResult] = await Promise.all([
-        supabase.auth.getUser(),
-        Location.requestForegroundPermissionsAsync().then(async ({ status }) => {
-          if (status !== "granted") return null;
-          return Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        }),
-      ]);
-
-      if (locationResult) {
-        const coords: [number, number] = [
-          locationResult.coords.longitude,
-          locationResult.coords.latitude,
-        ];
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        const coords: [number, number] = [loc.coords.longitude, loc.coords.latitude];
         setUserCoords(coords);
-        updateLastKnownLocation(locationResult.coords.latitude, locationResult.coords.longitude).catch(() => {});
-      }
-
-      if (user) {
-        setCurrentUserId(user.id);
-        const [profile, broadcast] = await Promise.all([
-          fetchProfile(user.id),
-          fetchMyActiveBroadcast(),
-        ]);
-        setMyProfile(profile);
-        setMyBroadcast(broadcast);
+        updateLastKnownLocation(loc.coords.latitude, loc.coords.longitude).catch(() => {});
       }
     })();
 
@@ -87,6 +69,18 @@ export default function MapScreen() {
 
     return () => { unsubFire(); unsubCity(); };
   }, []);
+
+  // Fetch profile + active broadcast once userId is available
+  useEffect(() => {
+    if (!currentUserId) return;
+    Promise.all([
+      fetchProfile(currentUserId),
+      fetchMyActiveBroadcast(),
+    ]).then(([profile, broadcast]) => {
+      setMyProfile(profile);
+      setMyBroadcast(broadcast);
+    });
+  }, [currentUserId]);
 
   // ── City switching ─────────────────────────────────────
 

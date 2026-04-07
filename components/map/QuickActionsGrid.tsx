@@ -3,9 +3,6 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import Animated, {
   FadeInDown,
   FadeOutDown,
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
 } from "react-native-reanimated";
 import {
   Utensils,
@@ -17,6 +14,7 @@ import {
   X,
 } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
+import { usePressScale } from "../../hooks/usePressScale";
 import { theme } from "../../constants/theme";
 import { QUICK_ACTION_OPTIONS } from "../../types";
 import type { StatusType } from "../../types";
@@ -134,10 +132,7 @@ function GridItem({
   isActive: boolean;
   onPress: () => void;
 }) {
-  const scale = useSharedValue(1);
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.92);
 
   const { Icon } = item;
 
@@ -152,12 +147,8 @@ function GridItem({
       <Pressable
         style={styles.gridItemInner}
         onPress={onPress}
-        onPressIn={() => {
-          scale.value = withSpring(0.92, theme.spring.snappy);
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, theme.spring.bouncy);
-        }}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
       >
         <View
           style={[

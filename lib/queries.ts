@@ -421,10 +421,10 @@ function assignBucket(b: StatusBroadcast): FeedBucket {
   }
 }
 
-export async function fetchFeedData(): Promise<FeedItem[]> {
-  const broadcasts = await fetchActiveBroadcastsWithJoins();
-  const { moments, soloBroadcasts } = computeMomentsCached(broadcasts);
-
+export function deriveFeedItems(
+  moments: Moment[],
+  soloBroadcasts: StatusBroadcast[]
+): FeedItem[] {
   const items: FeedItem[] = [];
 
   for (const b of soloBroadcasts) {
@@ -453,4 +453,10 @@ export async function fetchFeedData(): Promise<FeedItem[]> {
   });
 
   return items;
+}
+
+export async function fetchFeedData(): Promise<FeedItem[]> {
+  const broadcasts = await fetchActiveBroadcastsWithJoins();
+  const { moments, soloBroadcasts } = computeMomentsCached(broadcasts);
+  return deriveFeedItems(moments, soloBroadcasts);
 }

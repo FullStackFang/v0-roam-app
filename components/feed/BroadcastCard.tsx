@@ -1,9 +1,10 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated, { FadeInUp } from "react-native-reanimated";
 import { Radio, Users } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { theme } from "../../constants/theme";
+import { usePressScale } from "../../hooks/usePressScale";
 import { STATUS_ICONS } from "../../constants/statusIcons";
 import { formatTimeLeft } from "../../lib/formatTime";
 import { useJoinToggle } from "../../hooks/useJoinToggle";
@@ -18,11 +19,7 @@ interface BroadcastCardProps {
 }
 
 export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) {
-  const scale = useSharedValue(1);
-
-  const animatedScale = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const { animatedStyle: animatedScale, onPressIn, onPressOut } = usePressScale(0.975);
 
   const isMine = currentUserId === broadcast.user_id;
   const joins = broadcast.joins ?? [];
@@ -60,11 +57,9 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
         style={[styles.container, isForming && styles.containerForming]}
         onPressIn={() => {
           Haptics.selectionAsync();
-          scale.value = withSpring(0.975, theme.spring.snappy);
+          onPressIn();
         }}
-        onPressOut={() => {
-          scale.value = withSpring(1, theme.spring.bouncy);
-        }}
+        onPressOut={onPressOut}
       >
         <View style={styles.header}>
           <AvatarStack

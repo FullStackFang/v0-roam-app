@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   Platform,
   StyleSheet,
 } from "react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import * as Linking from "expo-linking";
+import { usePressScale } from "../hooks/usePressScale";
 import { supabase } from "../lib/supabase";
 import { theme } from "../constants/theme";
 
@@ -25,19 +26,7 @@ function AnimatedButton({
   onPress: () => void;
   disabled: boolean;
 }) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.97, theme.spring.snappy);
-  }, []);
-
-  const handlePressOut = useCallback(() => {
-    scale.value = withSpring(1, theme.spring.bouncy);
-  }, []);
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
 
   return (
     <Animated.View
@@ -49,8 +38,8 @@ function AnimatedButton({
     >
       <Pressable
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         disabled={disabled}
         style={styles.buttonInner}
       >

@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MapPin, List, Flame, Plane, MessageCircle } from "lucide-react-native";
 import * as Haptics from "../../lib/haptics";
 import { emitFirePress, emitCityPickerToggle } from "../../lib/events";
+import { BroadcastsProvider } from "../../lib/BroadcastsContext";
 import { theme } from "../../constants/theme";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 
@@ -117,13 +118,15 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen name="map" />
-      <Tabs.Screen name="feed" />
-    </Tabs>
+    <BroadcastsProvider>
+      <Tabs
+        tabBar={(props) => <CustomTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tabs.Screen name="map" />
+        <Tabs.Screen name="feed" />
+      </Tabs>
+    </BroadcastsProvider>
   );
 }
 
