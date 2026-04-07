@@ -1,12 +1,24 @@
 import { useState, useCallback, useEffect } from "react";
 import { joinBroadcast, leaveBroadcast } from "../lib/queries";
-import type { BroadcastJoin } from "../types";
+import type { BroadcastJoin, JoinType } from "../types";
+
+/** "none" → on_my_way → joined → leave (none) */
+type JoinState = "none" | "on_my_way" | "joined";
+
+export type JoinButtonState = "default" | "on_my_way" | "joined";
+
+interface JoinButtonProps {
+  state: JoinButtonState;
+  loading: boolean;
+  onPress: () => void;
+}
 
 interface UseJoinToggleResult {
-  hasJoined: boolean;
+  joinState: JoinState;
   joinLoading: boolean;
   joinCount: number;
-  handleJoinToggle: () => void;
+  omwCount: number;
+  joinButtonProps: JoinButtonProps;
 }
 
 export function useJoinToggle(
@@ -17,37 +29,86 @@ export function useJoinToggle(
   baseJoinCount: number
 ): UseJoinToggleResult {
   const [joinLoading, setJoinLoading] = useState(false);
-  const [optimisticJoined, setOptimisticJoined] = useState<boolean | null>(null);
+  const [optimisticState, setOptimisticState] = useState<JoinState | null>(null);
 
-  const hasJoined = optimisticJoined ?? joins.some((j) => j.user_id === currentUserId);
-  const joinCount =
-    optimisticJoined !== null
-      ? baseJoinCount + (optimisticJoined ? 1 : -1)
-      : baseJoinCount;
+  // Derive server state
+  const myJoin = joins.find((j) => j.user_id === currentUserId);
+  const serverState: JoinState = myJoin
+    ? (myJoin.join_type === "on_my_way" ? "on_my_way" : "joined")
+    : "none";
 
-  // Reset optimistic state when server data confirms the action
-  const joinsKey = joins.map((j) => j.user_id).join(",");
+  const joinState = optimisticState ?? serverState;
+
+  const serverOmwCount = joins.filter((j) => j.join_type === "on_my_way").length;
+
+  // Adjust counts based on optimistic state
+  let joinCount = baseJoinCount;
+  let omwCount = serverOmwCount;
+
+  if (optimisticState !== null && optimisticState !== serverState) {
+    if (serverState === "none" && optimisticState === "on_my_way") {
+      omwCount += 1;
+      joinCount += 1;
+    } else if (serverState === "none" && optimisticState === "joined") {
+      joinCount += 1;
+    } else if (serverState === "on_my_way" && optimisticState === "joined") {
+      omwCount -= 1;
+    } else if ((serverState === "on_my_way" || serverState === "joined") && optimisticState === "none") {
+      joinCount -= 1;
+      if (serverState === "on_my_way") omwCount -= 1;
+    }
+  }
+
+  // Reset optimistic state when server data changes
+  const joinsKey = joins.map((j) => `${j.user_id}:${j.join_type}`).join(",");
   useEffect(() => {
-    setOptimisticJoined(null);
+    setOptimisticState(null);
   }, [joinsKey]);
 
-  const handleJoinToggle = useCallback(async () => {
-    if (!currentUserId || isMine) return;
+  const handleOmw = useCallback(async () => {
+    if (!currentUserId || isMine || joinLoading) return;
     setJoinLoading(true);
-    const willJoin = !hasJoined;
-    setOptimisticJoined(willJoin);
+    setOptimisticState("on_my_way");
     try {
-      if (willJoin) {
-        await joinBroadcast(broadcastId);
-      } else {
-        await leaveBroadcast(broadcastId);
-      }
+      await joinBroadcast(broadcastId, "on_my_way");
     } catch {
-      setOptimisticJoined(null);
+      setOptimisticState(null);
     } finally {
       setJoinLoading(false);
     }
-  }, [currentUserId, isMine, hasJoined, broadcastId]);
+  }, [currentUserId, isMine, joinLoading, broadcastId]);
 
-  return { hasJoined, joinLoading, joinCount, handleJoinToggle };
+  const handleJoin = useCallback(async () => {
+    if (!currentUserId || isMine || joinLoading) return;
+    setJoinLoading(true);
+    setOptimisticState("joined");
+    try {
+      await joinBroadcast(broadcastId, "joined");
+    } catch {
+      setOptimisticState(null);
+    } finally {
+      setJoinLoading(false);
+    }
+  }, [currentUserId, isMine, joinLoading, broadcastId]);
+
+  const handleLeave = useCallback(async () => {
+    if (!currentUserId || isMine || joinLoading) return;
+    setJoinLoading(true);
+    setOptimisticState("none");
+    try {
+      await leaveBroadcast(broadcastId);
+    } catch {
+      setOptimisticState(null);
+    } finally {
+      setJoinLoading(false);
+    }
+  }, [currentUserId, isMine, joinLoading, broadcastId]);
+
+  const joinButtonProps: JoinButtonProps = {
+    state: joinState === "none" ? "default" : joinState,
+    loading: joinLoading,
+    onPress: joinState === "none" ? handleOmw : joinState === "on_my_way" ? handleJoin : handleLeave,
+  };
+
+  return { joinState, joinLoading, joinCount, omwCount, joinButtonProps };
 }

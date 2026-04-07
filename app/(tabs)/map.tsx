@@ -6,6 +6,7 @@ import { BonfireMap, type BonfireMapHandle } from "../../components/map/BonfireM
 import { MapHeaderBar } from "../../components/map/MapHeaderBar";
 import { QuickActionsGrid } from "../../components/map/QuickActionsGrid";
 import { MarkerDetailCard, type SelectedMapItem } from "../../components/map/MarkerDetailCard";
+import { CircleFilterBar } from "../../components/map/CircleFilterBar";
 import { Toast } from "../../components/ui/Toast";
 import { onFirePress, onCityPickerToggle } from "../../lib/events";
 import { StatusPill } from "../../components/broadcast/StatusPill";
@@ -27,7 +28,9 @@ import { useBroadcasts } from "../../lib/BroadcastsContext";
 import { DevPanel } from "../../components/dev/DevPanel";
 import { MyLocationButton } from "../../components/map/MyLocationButton";
 import { isAdmin } from "../../constants/admins";
-import { QUICK_ACTION_OPTIONS } from "../../types";
+import { checkPrometheus } from "../../lib/rewards";
+import { QUICK_ACTION_OPTIONS, STATUS_LABELS } from "../../types";
+import type { GoLiveParams } from "../../components/map/QuickActionsGrid";
 import type { Profile, StatusBroadcast, StatusType, BroadcastDuration } from "../../types";
 
 export default function MapScreen() {
@@ -46,6 +49,7 @@ export default function MapScreen() {
   const [citySelectorOpen, setCitySelectorOpen] = useState(false);
 
   const mapRef = useRef<BonfireMapHandle>(null);
+  const milestoneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Location permissions + event listeners
   useEffect(() => {
@@ -102,7 +106,7 @@ export default function MapScreen() {
   // ── Broadcast flow ──────────────────────────────────────
 
   const handleQuickAction = useCallback(
-    async (statusType: StatusType) => {
+    async (params: GoLiveParams) => {
       if (myBroadcast || sending) return;
       if (!userCoords) {
         setToastMsg("Enable location to go live");
@@ -115,11 +119,24 @@ export default function MapScreen() {
         const broadcast = await goLive({
           lat: userCoords[1],
           lng: userCoords[0],
+          ...params,
         });
-        await updateBroadcastContext(broadcast.id, statusType);
-        setMyBroadcast({ ...broadcast, status_type: statusType });
+        setMyBroadcast(broadcast);
         setToastMsg("You're live");
         scheduleLiveReminder(broadcast.id).catch(() => {});
+
+        // Check for Prometheus milestone (first Go Live)
+        if (currentUserId) {
+          checkPrometheus(currentUserId).then((milestone) => {
+            if (milestone) {
+              if (milestoneTimerRef.current) clearTimeout(milestoneTimerRef.current);
+              milestoneTimerRef.current = setTimeout(
+                () => setToastMsg(`${milestone.emoji} ${milestone.label} unlocked!`),
+                1800
+              );
+            }
+          }).catch(() => {});
+        }
       } catch (err: any) {
         setToastMsg(err.message);
         setGridOpen(true);
@@ -127,7 +144,7 @@ export default function MapScreen() {
         setSending(false);
       }
     },
-    [myBroadcast, sending, userCoords]
+    [myBroadcast, sending, userCoords, currentUserId]
   );
 
   const handleChangeAvailability = useCallback(
@@ -170,22 +187,22 @@ export default function MapScreen() {
   // ── Grid handlers ───────────────────────────────────────
 
   const handleGridSelect = useCallback(
-    async (statusType: StatusType) => {
+    async (params: GoLiveParams) => {
       if (sending) return;
 
       if (!myBroadcast) {
-        // Not live → go live with this activity
-        await handleQuickAction(statusType);
+        await handleQuickAction(params);
         return;
       }
 
       // Live → switch activity
-      if (statusType === myBroadcast.status_type) return;
+      if (params.statusType === myBroadcast.status_type) return;
+      const statusType = params.statusType;
       setSending(true);
       try {
         await updateBroadcastContext(myBroadcast.id, statusType);
         setMyBroadcast((prev) => prev ? { ...prev, status_type: statusType } : null);
-        const label = QUICK_ACTION_OPTIONS.find((o) => o.type === statusType)?.label ?? statusType;
+        const label = STATUS_LABELS[statusType] || (QUICK_ACTION_OPTIONS.find((o) => o.type === statusType)?.label ?? statusType);
         setToastMsg(`Switched to ${label}`);
         setGridOpen(false);
       } catch {
@@ -213,9 +230,14 @@ export default function MapScreen() {
     }
   }, [myBroadcast]);
 
-  const handleSparkPress = useCallback(() => {
-    setToastMsg("Coming soon");
-  }, []);
+  const handleGatherPress = useCallback(() => {
+    setGridOpen(false);
+    if (userCoords) {
+      router.push({ pathname: "/gather", params: { lat: String(userCoords[1]), lng: String(userCoords[0]) } });
+    } else {
+      router.push("/gather");
+    }
+  }, [router, userCoords]);
 
   const showDevPanel = __DEV__ || isAdmin(myProfile?.university_email);
 
@@ -242,6 +264,7 @@ export default function MapScreen() {
       <MapHeaderBar
         profile={myProfile}
         onProfilePress={() => router.push("/profile")}
+        onCirclesPress={() => router.push("/circles")}
       />
 
       <View style={styles.mapWrapper}>
@@ -274,6 +297,8 @@ export default function MapScreen() {
             )}
           </View>
 
+          <CircleFilterBar />
+
           {selectedMapItem && (
             <MarkerDetailCard
               item={selectedMapItem}
@@ -298,7 +323,7 @@ export default function MapScreen() {
             activeStatusType={myBroadcast?.status_type ?? null}
             onSelect={handleGridSelect}
             onClose={handleGridClose}
-            onSparkPress={handleSparkPress}
+            onGatherPress={handleGatherPress}
           />
         )}
 

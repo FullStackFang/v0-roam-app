@@ -105,7 +105,7 @@ function MomentBroadcastRow({
 }) {
   const isMine = currentUserId === broadcast.user_id;
   const joins = broadcast.joins ?? [];
-  const { hasJoined, joinLoading, joinCount, handleJoinToggle } = useJoinToggle(
+  const { joinCount, omwCount, joinButtonProps } = useJoinToggle(
     broadcast.id,
     currentUserId,
     isMine,
@@ -126,16 +126,14 @@ function MomentBroadcastRow({
         <View>
           <Text style={styles.broadcastName}>{name}</Text>
           {joinCount > 0 && (
-            <Text style={styles.broadcastJoins}>+{joinCount} joined</Text>
+            <Text style={styles.broadcastJoins}>
+              +{joinCount}{omwCount > 0 ? ` (${omwCount} otw)` : " joined"}
+            </Text>
           )}
         </View>
       </View>
       {!isMine && currentUserId && (
-        <JoinButton
-          joined={hasJoined}
-          loading={joinLoading}
-          onPress={handleJoinToggle}
-        />
+        <JoinButton {...joinButtonProps} />
       )}
     </View>
   );

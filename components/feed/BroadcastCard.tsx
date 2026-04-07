@@ -23,7 +23,7 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
 
   const isMine = currentUserId === broadcast.user_id;
   const joins = broadcast.joins ?? [];
-  const { hasJoined, joinLoading, joinCount, handleJoinToggle } = useJoinToggle(
+  const { joinCount, omwCount, joinButtonProps } = useJoinToggle(
     broadcast.id,
     currentUserId,
     isMine,
@@ -91,18 +91,25 @@ export function BroadcastCard({ broadcast, currentUserId }: BroadcastCardProps) 
           </Text>
         </View>
 
+        {broadcast.custom_text && broadcast.status_type !== "custom" && (
+          <Text style={styles.customText} numberOfLines={2}>
+            {broadcast.custom_text}
+          </Text>
+        )}
+
         {isForming && joins.length > 0 && (
           <SocialProofLine joins={joins} />
         )}
 
         <View style={styles.footer}>
-          <Text style={styles.timeLeft}>{timeLeft}</Text>
+          <View style={styles.footerLeft}>
+            <Text style={styles.timeLeft}>{timeLeft}</Text>
+            {omwCount > 0 && (
+              <Text style={styles.omwCount}>{omwCount} on the way</Text>
+            )}
+          </View>
           {!isMine && currentUserId && (
-            <JoinButton
-              joined={hasJoined}
-              loading={joinLoading}
-              onPress={handleJoinToggle}
-            />
+            <JoinButton {...joinButtonProps} />
           )}
         </View>
       </Pressable>
@@ -171,6 +178,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  footerLeft: {
+    gap: 2,
+  },
+  omwCount: {
+    fontFamily: theme.fonts.sansMedium,
+    fontSize: 12,
+    color: theme.accent,
+  },
+  customText: {
+    fontFamily: theme.fonts.sans,
+    fontSize: 14,
+    color: theme.muted,
+    lineHeight: 19,
   },
   timeLeft: {
     fontFamily: theme.fonts.sans,

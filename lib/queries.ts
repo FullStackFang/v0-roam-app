@@ -5,9 +5,15 @@ import type {
   StatusBroadcast,
   StatusType,
   BroadcastDuration,
+  JoinType,
+  AudienceType,
   FeedItem,
   FeedBucket,
   Moment,
+  Circle,
+  CircleMember,
+  Gather,
+  GatherRSVP,
 } from "../types";
 import { CLUSTERABLE_STATUS_TYPES } from "../types";
 
@@ -16,7 +22,7 @@ import { CLUSTERABLE_STATUS_TYPES } from "../types";
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, university_email, created_at")
+    .select("id, display_name, avatar_url, university_email, notifications_muted, created_at")
     .eq("id", userId)
     .single();
 
@@ -25,7 +31,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function upsertProfile(
-  updates: Partial<Pick<Profile, "display_name" | "avatar_url">>
+  updates: Partial<Pick<Profile, "display_name" | "avatar_url" | "notifications_muted">>
 ): Promise<Profile> {
   const {
     data: { user },
@@ -106,28 +112,36 @@ export async function fetchMyActiveBroadcast(): Promise<StatusBroadcast | null> 
   return data;
 }
 
-export async function goLive(
-  location: { lat: number; lng: number }
-): Promise<StatusBroadcast> {
+export async function goLive(params: {
+  lat: number;
+  lng: number;
+  statusType: StatusType;
+  duration: BroadcastDuration;
+  customText?: string;
+  audienceType?: AudienceType;
+  audienceCircleId?: string;
+}): Promise<StatusBroadcast> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
 
-  const expiresAt = computeExpiresAt("1h");
+  const expiresAt = computeExpiresAt(params.duration);
 
   // Insert new broadcast first to avoid an empty-state flash on the map
   const { data, error } = await supabase
     .from("status_broadcasts")
     .insert({
       user_id: user.id,
-      status_type: "out_now",
-      custom_text: null,
-      duration: "1h",
+      status_type: params.statusType,
+      custom_text: params.customText ?? null,
+      duration: params.duration,
       expires_at: expiresAt.toISOString(),
-      location: `SRID=4326;POINT(${location.lng} ${location.lat})`,
-      lat: location.lat,
-      lng: location.lng,
+      location: `SRID=4326;POINT(${params.lng} ${params.lat})`,
+      lat: params.lat,
+      lng: params.lng,
+      audience_type: params.audienceType ?? "everyone",
+      audience_circle_id: params.audienceCircleId ?? null,
     })
     .select("*, profile:profiles(*)")
     .single();
@@ -186,7 +200,7 @@ export async function endBroadcast(broadcastId: string): Promise<void> {
 export async function fetchActiveBroadcastsWithJoins(): Promise<StatusBroadcast[]> {
   const { data, error } = await supabase
     .from("status_broadcasts")
-    .select("*, profile:profiles(*), joins:broadcast_joins(id, user_id, created_at, profile:profiles(*))")
+    .select("*, profile:profiles(*), joins:broadcast_joins(id, user_id, join_type, created_at, profile:profiles(*))")
     .gt("expires_at", new Date().toISOString())
     .order("created_at", { ascending: false });
 
@@ -197,7 +211,10 @@ export async function fetchActiveBroadcastsWithJoins(): Promise<StatusBroadcast[
   }));
 }
 
-export async function joinBroadcast(broadcastId: string): Promise<void> {
+export async function joinBroadcast(
+  broadcastId: string,
+  joinType: JoinType = "joined"
+): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -206,7 +223,7 @@ export async function joinBroadcast(broadcastId: string): Promise<void> {
   const { error } = await supabase
     .from("broadcast_joins")
     .upsert(
-      { broadcast_id: broadcastId, user_id: user.id },
+      { broadcast_id: broadcastId, user_id: user.id, join_type: joinType },
       { onConflict: "broadcast_id,user_id" }
     );
 
@@ -238,6 +255,241 @@ export async function toggleBroadcastVisibility(
     .from("status_broadcasts")
     .update({ is_visible: isVisible })
     .eq("id", broadcastId);
+
+  if (error) throw error;
+}
+
+// ── Circle Queries ──────────────────────────────────────
+
+export async function fetchMyCircles(): Promise<Circle[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Get circle IDs the user belongs to
+  const { data: memberships, error: memErr } = await supabase
+    .from("circle_members")
+    .select("circle_id")
+    .eq("user_id", user.id);
+
+  if (memErr || !memberships?.length) return [];
+
+  const circleIds = memberships.map((m: { circle_id: string }) => m.circle_id);
+
+  const { data, error } = await supabase
+    .from("circles")
+    .select("*, members:circle_members(count)")
+    .in("id", circleIds)
+    .order("last_active_at", { ascending: false, nullsFirst: false });
+
+  if (error) throw error;
+  return (data ?? []).map((c: any) => ({
+    ...c,
+    member_count: c.members?.[0]?.count ?? 0,
+  }));
+}
+
+export async function createCircle(name: string): Promise<Circle> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data, error } = await supabase
+    .from("circles")
+    .insert({ name, created_by: user.id })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Auto-add creator as first member; delete circle if this fails
+  const { error: memberErr } = await supabase
+    .from("circle_members")
+    .insert({ circle_id: data.id, user_id: user.id });
+
+  if (memberErr) {
+    await supabase.from("circles").delete().eq("id", data.id);
+    throw memberErr;
+  }
+
+  return { ...data, member_count: 1 };
+}
+
+export async function fetchCircleMembers(circleId: string): Promise<CircleMember[]> {
+  const { data, error } = await supabase
+    .from("circle_members")
+    .select("*, profile:profiles(id, display_name, avatar_url, university_email, created_at)")
+    .eq("circle_id", circleId)
+    .order("joined_at", { ascending: true });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addCircleMember(circleId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from("circle_members")
+    .upsert(
+      { circle_id: circleId, user_id: userId },
+      { onConflict: "circle_id,user_id" }
+    );
+
+  if (error) throw error;
+}
+
+export async function leaveCircle(circleId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("circle_members")
+    .delete()
+    .eq("circle_id", circleId)
+    .eq("user_id", user.id);
+
+  if (error) throw error;
+}
+
+export async function deleteCircle(circleId: string): Promise<void> {
+  const { error } = await supabase
+    .from("circles")
+    .delete()
+    .eq("id", circleId);
+
+  if (error) throw error;
+}
+
+export async function searchProfiles(query: string): Promise<Profile[]> {
+  if (query.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, display_name, avatar_url, university_email, notifications_muted, created_at")
+    .ilike("display_name", `%${query}%`)
+    .limit(10);
+
+  if (error) return [];
+  return data ?? [];
+}
+
+// ── Gather Queries ──────────────────────────────────────
+
+export async function createGather(params: {
+  title: string;
+  statusType: StatusType;
+  customText?: string;
+  venueName?: string;
+  lat?: number;
+  lng?: number;
+  startsAt?: string;
+  durationHours: number;
+  audienceType?: AudienceType;
+  audienceCircleId?: string;
+}): Promise<Gather> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const expiresAt = params.startsAt
+    ? new Date(new Date(params.startsAt).getTime() + params.durationHours * 60 * 60 * 1000)
+    : new Date(Date.now() + params.durationHours * 60 * 60 * 1000);
+
+  const insert: Record<string, unknown> = {
+    created_by: user.id,
+    title: params.title,
+    status_type: params.statusType,
+    custom_text: params.customText ?? null,
+    venue_name: params.venueName ?? null,
+    lat: params.lat ?? null,
+    lng: params.lng ?? null,
+    starts_at: params.startsAt ?? null,
+    expires_at: expiresAt.toISOString(),
+    audience_type: params.audienceType ?? "everyone",
+    audience_circle_id: params.audienceCircleId ?? null,
+  };
+
+  if (params.lat != null && params.lng != null) {
+    insert.location = `SRID=4326;POINT(${params.lng} ${params.lat})`;
+  }
+
+  const { data, error } = await supabase
+    .from("gathers")
+    .insert(insert)
+    .select("*, profile:profiles(*)")
+    .single();
+
+  if (error) throw error;
+
+  // Auto-RSVP the creator as "in"
+  await supabase
+    .from("gather_invites")
+    .insert({ gather_id: data.id, user_id: user.id, rsvp: "in" });
+
+  return { ...data, in_count: 1 };
+}
+
+export async function fetchActiveGathers(): Promise<Gather[]> {
+  const { data, error } = await supabase
+    .from("gathers")
+    .select("*, profile:profiles(*), invites:gather_invites(id, user_id, rsvp, created_at, profile:profiles(*))")
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((g: Gather) => ({
+    ...g,
+    in_count: g.invites?.filter((i) => i.rsvp === "in").length ?? 0,
+  }));
+}
+
+export async function rsvpGather(
+  gatherId: string,
+  rsvp: GatherRSVP
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { error } = await supabase
+    .from("gather_invites")
+    .upsert(
+      { gather_id: gatherId, user_id: user.id, rsvp },
+      { onConflict: "gather_id,user_id" }
+    );
+
+  if (error) throw error;
+}
+
+export async function cancelGather(gatherId: string): Promise<void> {
+  const { error } = await supabase
+    .from("gathers")
+    .delete()
+    .eq("id", gatherId);
+
+  if (error) throw error;
+}
+
+export async function inviteToGather(
+  gatherId: string,
+  userIds: string[]
+): Promise<void> {
+  if (userIds.length === 0) return;
+
+  const rows = userIds.map((uid) => ({
+    gather_id: gatherId,
+    user_id: uid,
+    rsvp: "pending" as GatherRSVP,
+  }));
+
+  const { error } = await supabase
+    .from("gather_invites")
+    .upsert(rows, { onConflict: "gather_id,user_id" });
 
   if (error) throw error;
 }
@@ -421,9 +673,23 @@ function assignBucket(b: StatusBroadcast): FeedBucket {
   }
 }
 
+function assignGatherBucket(g: Gather): FeedBucket {
+  if (g.starts_at) {
+    const startsMs = new Date(g.starts_at).getTime();
+    const now = Date.now();
+    const twoHours = 2 * 60 * 60 * 1000;
+    if (startsMs - now <= twoHours) return "happening_now";
+    const hour = new Date(g.starts_at).getHours();
+    return hour >= 18 ? "tonight" : "later_today";
+  }
+  // No start time = happening now
+  return "happening_now";
+}
+
 export function deriveFeedItems(
   moments: Moment[],
-  soloBroadcasts: StatusBroadcast[]
+  soloBroadcasts: StatusBroadcast[],
+  gathers: Gather[] = []
 ): FeedItem[] {
   const items: FeedItem[] = [];
 
@@ -438,17 +704,29 @@ export function deriveFeedItems(
     items.push({ type: "moment" as const, data: m, bucket: assignBucket(representative) });
   }
 
+  for (const g of gathers) {
+    items.push({ type: "gather" as const, data: g, bucket: assignGatherBucket(g) });
+  }
+
   items.sort((a, z) => {
     const bucketDiff = BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(z.bucket);
     if (bucketDiff !== 0) return bucketDiff;
 
-    const aCount = a.type === "moment" ? a.data.participant_count : ((a.data as StatusBroadcast).join_count ?? 0) + 1;
-    const zCount = z.type === "moment" ? z.data.participant_count : ((z.data as StatusBroadcast).join_count ?? 0) + 1;
+    const aCount = a.type === "moment" ? a.data.participant_count
+      : a.type === "gather" ? (a.data.in_count ?? 0)
+      : ((a.data as StatusBroadcast).join_count ?? 0) + 1;
+    const zCount = z.type === "moment" ? z.data.participant_count
+      : z.type === "gather" ? (z.data.in_count ?? 0)
+      : ((z.data as StatusBroadcast).join_count ?? 0) + 1;
     const countDiff = zCount - aCount;
     if (countDiff !== 0) return countDiff;
 
-    const aTime = a.type === "moment" ? a.data.latest_activity : (a.data as StatusBroadcast).created_at;
-    const zTime = z.type === "moment" ? z.data.latest_activity : (z.data as StatusBroadcast).created_at;
+    const aTime = a.type === "moment" ? a.data.latest_activity
+      : a.type === "gather" ? a.data.created_at
+      : (a.data as StatusBroadcast).created_at;
+    const zTime = z.type === "moment" ? z.data.latest_activity
+      : z.type === "gather" ? z.data.created_at
+      : (z.data as StatusBroadcast).created_at;
     return new Date(zTime).getTime() - new Date(aTime).getTime();
   });
 

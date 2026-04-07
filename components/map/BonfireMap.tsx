@@ -42,7 +42,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
     { initialCenter, initialZoom, maxBounds, minZoomLevel, maxZoomLevel, currentUserId, selectedItem, onMarkerSelect, onMapPress, onUserLocationUpdate },
     ref,
   ) {
-    const { moments, soloBroadcasts } = useBroadcasts();
+    const { moments, soloBroadcasts, gathers } = useBroadcasts();
     const userLocationRef = useRef<[number, number] | null>(null);
 
     // Reactive camera target — drives Camera props instead of imperative setNativeProps
@@ -113,6 +113,7 @@ export const BonfireMap = forwardRef<BonfireMapHandle, BonfireMapProps>(
         <BroadcastMarkersLayer
           broadcasts={soloBroadcasts}
           moments={moments}
+          gathers={gathers}
           currentUserId={currentUserId}
           selectedId={selectedId}
           onMarkerPress={onMarkerSelect}

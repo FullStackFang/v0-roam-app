@@ -3,6 +3,7 @@ export interface Profile {
   display_name: string;
   avatar_url: string | null;
   university_email: string;
+  notifications_muted: boolean;
   created_at: string;
 }
 
@@ -29,13 +30,34 @@ export type StatusType =
 
 export type BroadcastDuration = "1h" | "until_2am" | "24h" | "today" | "tonight";
 
+// ── Intent States (Go Live first step) ───────────────────
+
+export type IntentState = "available_now" | "out_today" | "out_tonight";
+
+export const INTENT_OPTIONS: {
+  intent: IntentState;
+  duration: BroadcastDuration;
+  emoji: string;
+  label: string;
+  description: string;
+}[] = [
+  { intent: "available_now", duration: "1h", emoji: "\ud83d\udfe2", label: "Available now", description: "Free for the next hour" },
+  { intent: "out_today", duration: "today", emoji: "\u2600\ufe0f", label: "Out today", description: "Open to plans today" },
+  { intent: "out_tonight", duration: "tonight", emoji: "\ud83c\udf19", label: "Out tonight", description: "Active for the night" },
+];
+
+export type JoinType = "joined" | "on_my_way";
+
 export interface BroadcastJoin {
   id: string;
   broadcast_id: string;
   user_id: string;
+  join_type: JoinType;
   created_at: string;
   profile?: Profile;
 }
+
+export type AudienceType = "everyone" | "circle";
 
 export interface StatusBroadcast {
   id: string;
@@ -50,6 +72,8 @@ export interface StatusBroadcast {
   fuzzy_lat: number | null;
   fuzzy_lng: number | null;
   is_visible: boolean;
+  audience_type: AudienceType;
+  audience_circle_id: string | null;
   created_at: string;
   profile?: Profile;
   joins?: BroadcastJoin[];
@@ -124,4 +148,93 @@ export const BUCKET_LABELS: Record<FeedBucket, string> = {
 
 export type FeedItem =
   | { type: "broadcast"; data: StatusBroadcast; bucket: FeedBucket }
-  | { type: "moment"; data: Moment; bucket: FeedBucket };
+  | { type: "moment"; data: Moment; bucket: FeedBucket }
+  | { type: "gather"; data: Gather; bucket: FeedBucket };
+
+// ── Gather Types ─────────────────────────────────────────────
+
+export type GatherRSVP = "pending" | "in" | "out";
+
+export interface GatherInvite {
+  id: string;
+  gather_id: string;
+  user_id: string;
+  rsvp: GatherRSVP;
+  created_at: string;
+  profile?: Profile;
+}
+
+export interface Gather {
+  id: string;
+  created_by: string;
+  title: string;
+  status_type: StatusType;
+  custom_text: string | null;
+  venue_name: string | null;
+  lat: number | null;
+  lng: number | null;
+  starts_at: string | null;
+  expires_at: string;
+  audience_type: AudienceType;
+  audience_circle_id: string | null;
+  created_at: string;
+  profile?: Profile;
+  invites?: GatherInvite[];
+  in_count?: number;
+}
+
+// ── Circle Types ─────────────────────────────────────────────
+
+export interface Circle {
+  id: string;
+  name: string;
+  created_by: string;
+  streak_count: number;
+  last_active_at: string | null;
+  created_at: string;
+  member_count?: number;
+}
+
+export interface CircleMember {
+  id: string;
+  circle_id: string;
+  user_id: string;
+  joined_at: string;
+  profile?: Profile;
+}
+
+// ── Reward / Avatar Types ────────────────────────────────────
+
+export type RewardType = "badge" | "accessory" | "border";
+
+export interface UserReward {
+  id: string;
+  user_id: string;
+  reward_key: string;
+  reward_type: RewardType;
+  unlocked_at: string;
+}
+
+export interface AvatarConfig {
+  user_id: string;
+  equipped_badge: string | null;
+  equipped_accessory: string | null;
+  equipped_border: string | null;
+  updated_at: string;
+}
+
+export interface MilestoneDef {
+  key: string;
+  label: string;
+  emoji: string;
+  rewardType: RewardType;
+  description: string;
+}
+
+export const MILESTONE_DEFS: MilestoneDef[] = [
+  { key: "prometheus", label: "Prometheus", emoji: "\ud83d\udd25", rewardType: "badge", description: "First Go Live" },
+  { key: "spark", label: "Spark", emoji: "\u26a1", rewardType: "badge", description: "10 venue ratings" },
+  { key: "chefs_hat", label: "Chef's Hat", emoji: "\ud83d\udc68\u200d\ud83c\udf73", rewardType: "accessory", description: "50 venue ratings" },
+  { key: "firekeeper", label: "Firekeeper", emoji: "\ud83d\udd25", rewardType: "badge", description: "Hosted 10 Gathers" },
+  { key: "trailblazer", label: "Trailblazer", emoji: "\ud83e\udded", rewardType: "badge", description: "5 active circles" },
+];

@@ -21,18 +21,24 @@ export const STATUS_EMOJI = Object.fromEntries(
 /** Moment marker — visually distinct "something's forming" */
 export const MOMENT_MARKER = { emoji: "🔥", bg: "#FF6B3D" };
 
+/** Gather marker — warm amber ring to signal "planned meetup" */
+export const GATHER_MARKER = { emoji: "🤝", bg: "#F59E0B" };
+
 /* ── Sizing constants ────────────────────────────────────────── */
 
 const MARKER_SIZE = 40;
 const MOMENT_SIZE = 48;
+const GATHER_SIZE = 46;
 const EMOJI_SIZE = 18;
 const MOMENT_EMOJI_SIZE = 22;
+const GATHER_EMOJI_SIZE = 20;
 
 /* ── Component ───────────────────────────────────────────────── */
 
 interface BroadcastMarkerProps {
   statusType: StatusType;
   isMoment?: boolean;
+  isGather?: boolean;
   isSelected?: boolean;
   onPress: () => void;
 }
@@ -40,12 +46,13 @@ interface BroadcastMarkerProps {
 export function BroadcastMarker({
   statusType,
   isMoment = false,
+  isGather = false,
   isSelected = false,
   onPress,
 }: BroadcastMarkerProps) {
-  const marker = isMoment ? MOMENT_MARKER : STATUS_MARKER[statusType];
-  const size = isMoment ? MOMENT_SIZE : MARKER_SIZE;
-  const emojiSize = isMoment ? MOMENT_EMOJI_SIZE : EMOJI_SIZE;
+  const marker = isGather ? GATHER_MARKER : isMoment ? MOMENT_MARKER : STATUS_MARKER[statusType];
+  const size = isGather ? GATHER_SIZE : isMoment ? MOMENT_SIZE : MARKER_SIZE;
+  const emojiSize = isGather ? GATHER_EMOJI_SIZE : isMoment ? MOMENT_EMOJI_SIZE : EMOJI_SIZE;
 
   return (
     <View style={[styles.root, { width: size, height: size }]}>

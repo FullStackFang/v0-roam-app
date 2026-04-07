@@ -9,9 +9,10 @@ import type { Profile } from "../../types";
 interface MapHeaderBarProps {
   profile: Profile | null;
   onProfilePress?: () => void;
+  onCirclesPress?: () => void;
 }
 
-export function MapHeaderBar({ profile, onProfilePress }: MapHeaderBarProps) {
+export function MapHeaderBar({ profile, onProfilePress, onCirclesPress }: MapHeaderBarProps) {
   const insets = useSafeAreaInsets();
 
   const initial = profile?.display_name?.charAt(0).toUpperCase() ?? "?";
@@ -47,10 +48,13 @@ export function MapHeaderBar({ profile, onProfilePress }: MapHeaderBarProps) {
         </Pressable>
         <Pressable
           style={styles.iconBtn}
-          onPress={() => Haptics.selectionAsync()}
+          onPress={() => {
+            Haptics.selectionAsync();
+            onCirclesPress?.();
+          }}
           hitSlop={4}
         >
-          <Users size={22} color={theme.muted} strokeWidth={2} />
+          <Users size={22} color={theme.text} strokeWidth={2} />
         </Pressable>
       </View>
     </View>

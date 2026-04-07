@@ -17,10 +17,11 @@ export function SocialProofLine({ joins }: SocialProofLineProps) {
   );
 
   const name = latest.profile?.display_name?.split(" ")[0] ?? "Someone";
+  const verb = latest.join_type === "on_my_way" ? "is on the way" : "joined";
 
   return (
     <Text style={styles.text}>
-      {name} joined{" "}
+      {name} {verb}{" "}
       <Text style={styles.dot}>&middot;</Text>{" "}
       {formatTimeAgo(latest.created_at)}
     </Text>

@@ -1,19 +1,22 @@
 import React from "react";
 import { MarkerView } from "@maplibre/maplibre-react-native";
 import { BroadcastMarker } from "./BroadcastMarker";
-import type { StatusBroadcast, Moment } from "../../types";
+import type { StatusBroadcast, Moment, Gather } from "../../types";
+import type { SelectedMapItem } from "./MarkerDetailCard";
 
 interface Props {
   broadcasts: StatusBroadcast[];
   moments: Moment[];
+  gathers: Gather[];
   currentUserId: string | null;
   selectedId: string | null;
-  onMarkerPress: (item: { type: "broadcast"; data: StatusBroadcast } | { type: "moment"; data: Moment }) => void;
+  onMarkerPress: (item: SelectedMapItem) => void;
 }
 
 export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
   broadcasts,
   moments,
+  gathers,
   currentUserId,
   selectedId,
   onMarkerPress,
@@ -58,6 +61,25 @@ export const BroadcastMarkersLayer = React.memo(function BroadcastMarkersLayer({
           />
         </MarkerView>
       ))}
+
+      {gathers.map((g) => {
+        if (g.lat == null || g.lng == null) return null;
+        return (
+          <MarkerView
+            key={`gather-${g.id}`}
+            coordinate={[g.lng, g.lat]}
+            anchor={{ x: 0.5, y: 0.5 }}
+            allowOverlap
+          >
+            <BroadcastMarker
+              statusType={g.status_type}
+              isGather
+              isSelected={selectedId === g.id}
+              onPress={() => onMarkerPress({ type: "gather", data: g })}
+            />
+          </MarkerView>
+        );
+      })}
     </>
   );
 });

@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X, LogOut, Check } from "lucide-react-native";
+import { X, LogOut, Check, Bell, BellOff } from "lucide-react-native";
 import * as Haptics from "../lib/haptics";
 import { supabase } from "../lib/supabase";
 import { fetchProfile, upsertProfile } from "../lib/queries";
@@ -148,7 +148,31 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Sign out */}
+      {/* Notifications */}
+      <View style={styles.notifSection}>
+        <Pressable
+          style={styles.notifRow}
+          onPress={async () => {
+            if (!profile) return;
+            const newMuted = !profile.notifications_muted;
+            Haptics.selectionAsync();
+            try {
+              await upsertProfile({ notifications_muted: newMuted });
+              setProfile((prev) => prev ? { ...prev, notifications_muted: newMuted } : null);
+            } catch {}
+          }}
+        >
+          {profile?.notifications_muted ? (
+            <BellOff size={18} color={theme.muted} strokeWidth={1.75} />
+          ) : (
+            <Bell size={18} color={theme.text} strokeWidth={1.75} />
+          )}
+          <Text style={styles.notifLabel}>
+            {profile?.notifications_muted ? "Notifications muted" : "Notifications on"}
+          </Text>
+        </Pressable>
+      </View>
+
       <View style={styles.footer}>
         <Pressable style={styles.signOutBtn} onPress={handleSignOut}>
           <LogOut size={18} color={theme.error} strokeWidth={1.75} />
@@ -240,6 +264,27 @@ const styles = StyleSheet.create({
     backgroundColor: theme.accent,
     alignItems: "center",
     justifyContent: "center",
+  },
+  notifSection: {
+    paddingHorizontal: 24,
+    marginTop: 28,
+  },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: theme.radius.md,
+    borderCurve: "continuous",
+    backgroundColor: theme.surface,
+    borderWidth: 1,
+    borderColor: theme.border,
+  } as any,
+  notifLabel: {
+    fontFamily: theme.fonts.sansMedium,
+    fontSize: 15,
+    color: theme.text,
   },
   footer: {
     marginTop: "auto",

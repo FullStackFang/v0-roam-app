@@ -17,6 +17,7 @@ import {
   NunitoSans_600SemiBold,
   NunitoSans_700Bold,
 } from "@expo-google-fonts/nunito-sans";
+import * as Notifications from "expo-notifications";
 import { supabase } from "../lib/supabase";
 import { registerForPushNotifications } from "../lib/notifications";
 import { clearMomentsCache } from "../lib/queries";
@@ -58,7 +59,18 @@ export default function RootLayout() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Navigate to map when a notification is tapped
+    const notifSub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      if (data?.type === "join" || data?.type === "omw" || data?.type === "nearby") {
+        router.push("/(tabs)/map");
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+      notifSub.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -85,6 +97,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="profile" options={{ presentation: "modal" }} />
+        <Stack.Screen name="circles" options={{ presentation: "modal" }} />
+        <Stack.Screen name="gather" options={{ presentation: "modal" }} />
         <Stack.Screen name="auth" />
         <Stack.Screen name="index" />
       </Stack>

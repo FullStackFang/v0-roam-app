@@ -1,6 +1,7 @@
 import React from "react";
 import { BroadcastCard } from "./BroadcastCard";
 import { MomentCard } from "./MomentCard";
+import { GatherCard } from "./GatherCard";
 import type { FeedItem } from "../../types";
 
 interface FeedCardProps {
@@ -14,5 +15,7 @@ export function FeedCard({ item, currentUserId }: FeedCardProps): React.ReactEle
       return <BroadcastCard broadcast={item.data} currentUserId={currentUserId} />;
     case "moment":
       return <MomentCard moment={item.data} currentUserId={currentUserId} />;
+    case "gather":
+      return <GatherCard gather={item.data} currentUserId={currentUserId} />;
   }
 }
